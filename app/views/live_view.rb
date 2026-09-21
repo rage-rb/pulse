@@ -2,10 +2,10 @@
 #
 # A LiveView differs from a plain Phlex view in three ways:
 #
-#   1. Identity — it is wrapped in a <div> with a generated id and registered in the
-#      connection's `Fiber[:live_state][:components]` registry. The server can
-#      therefore find this exact instance again when the client dispatches an event
-#      to it. No id encoding, no database reconstruction — just a lookup.
+#   1. Identity — its first body element receives a generated id (via `AutoLiveId`)
+#      and the instance is registered in `Fiber[:live_state][:components]`. The server
+#      can therefore find this exact instance again when the client dispatches an
+#      event to it. No id encoding, no database reconstruction — just a lookup.
 #
 #   2. State — the instance lives in fiber storage for the lifetime of the WebSocket
 #      connection, so it can hold transient UI state (e.g. "expanded?") across events.
@@ -50,8 +50,8 @@ class LiveView < Phlex::HTML
   def remove
     return unless Fiber[:live_state]
 
-    Fiber[:live_state][:components].delete(@live_id)
-    emit(action: "remove", id: @live_id)
+    Fiber[:live_state][:components].delete(live_id)
+    emit(action: "remove", id: live_id)
   end
 
   # Data attributes binding a DOM event to a server-side method on this instance:
@@ -60,7 +60,7 @@ class LiveView < Phlex::HTML
   # instance up by id and invokes the method.
   def live_click(event_name)
     # TODO: support additional parameters
-    { data_live_click: event_name.to_s, data_live_id: @live_id }
+    { data_live_click: event_name.to_s, data_live_id: live_id }
   end
 
   private
@@ -82,12 +82,17 @@ class LiveView < Phlex::HTML
     call
   end
 
-  # Wrap each live component in an identifiable element and register the instance so
-  # that later events can be routed back to it. Runs on every render; the id is
-  # assigned once and preserved, so re-renders keep targeting the same element.
+  # Register the instance and mark it for ID injection. The `AutoLiveId` patch
+  # will inject `live_id` into the component's first body element. Runs on every
+  # render; the id is assigned once and preserved, so re-renders keep targeting
+  # the same element.
   def around_template
+    Fiber[:live_state][:components][live_id] = self if Fiber[:live_state]
+    @_pending_live_id = true
+    super
+  end
+
+  def live_id
     @live_id ||= "el-#{object_id}"
-    Fiber[:live_state][:components][@live_id] = self if Fiber[:live_state]
-    div(id: @live_id) { super }
   end
 end

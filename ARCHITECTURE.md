@@ -224,15 +224,34 @@ method returns, re-rendering and pushing the change to *this* connection.
 
 ### Identity and state without `live_id`
 
-When a `LiveView` renders, `around_template` assigns it an id derived from the Ruby
-instance itself (`el-#{object_id}`), stores the **actual instance** in
-`Fiber[:live_state][:components]`, and wraps its output in `<div id="el-8420">`:
+When a `LiveView` renders, `around_template` registers the **actual instance** in
+`Fiber[:live_state][:components]` and sets `@_pending_live_id`. The `AutoLiveId` patch
+then injects the `live_id` (derived from `object_id`) into the component's first body
+content element:
 
 ```ruby
+# app/views/live_view.rb
 def around_template
+  Fiber[:live_state][:components][live_id] = self if Fiber[:live_state]
+  @_pending_live_id = true
+  super
+end
+
+def live_id
   @live_id ||= "el-#{object_id}"
-  Fiber[:live_state][:components][@live_id] = self if Fiber[:live_state]
-  div(id: @live_id) { super }
+end
+```
+
+```ruby
+# config/initializers/phlex_patch.rb — simplified
+body_content_elements.each do |method_name|
+  AutoLiveId.define_method(method_name) do |**attributes, &block|
+    if @_pending_live_id
+      attributes[:id] = live_id unless attributes.has_key?(:id)
+      @_pending_live_id = false
+    end
+    super(**attributes, &block)
+  end
 end
 ```
 

@@ -1,4 +1,4 @@
-class Layout < Phlex::HTML
+class Layout < LiveView
   include LiveUpdateJs
 
   def initialize(title: "CMS Admin")
