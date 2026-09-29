@@ -14,8 +14,10 @@ Rage.configure do
   # and direct URL visits; once the WebSocket is connected, the client drives all
   # rendering over the socket via LiveChannel instead.
   config.renderer :phlex do |component, **props|
+    component_instance = component.new(**props)
+    Fiber[:live_state][:root_component] ||= component_instance if Fiber[:live_state]
     headers["content-type"] = "text/html"
-    component.new(**props).call
+    component_instance.call
   end
 end
 

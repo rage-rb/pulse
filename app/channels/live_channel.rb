@@ -10,7 +10,8 @@ class LiveChannel < Rage::Cable::Channel
   def subscribed
     Fiber[:live_state] = {
       update: ->(payload) { transmit(payload) },
-      components: {},
+      live_components: nil,
+      root_component: nil,
       cleanup: []
     }
   end
@@ -53,7 +54,7 @@ class LiveChannel < Rage::Cable::Channel
   # component is still in memory with all of its state, so we just look it up and call
   # the requested method; the method pushes any resulting update itself (via #replace).
   def handle_event(data)
-    component = Fiber[:live_state][:components][data["id"]]
+    component = Fiber[:live_state][:live_components][data["id"].to_i]
     return unless component
 
     event = data["event"].to_sym
@@ -84,6 +85,6 @@ class LiveChannel < Rage::Cable::Channel
   # so that the lambdas registered by `stream` can still reference their models.
   def cleanup_live_components
     Fiber[:live_state][:cleanup].each(&:call).clear
-    Fiber[:live_state][:components].clear
+    Fiber[:live_state][:root_component] = nil
   end
 end

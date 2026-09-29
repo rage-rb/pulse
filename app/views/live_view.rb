@@ -50,7 +50,7 @@ class LiveView < Phlex::HTML
   def remove
     return unless Fiber[:live_state]
 
-    Fiber[:live_state][:components].delete(live_id)
+    @_parent&._children&.delete(self)
     emit(action: "remove", id: live_id)
   end
 
@@ -60,8 +60,17 @@ class LiveView < Phlex::HTML
   # instance up by id and invokes the method.
   def live_click(event_name)
     # TODO: support additional parameters
-    { data_live_click: event_name.to_s, data_live_id: live_id }
+    if (live_state = Fiber[:live_state])
+      live_state[:live_components] ||= ObjectSpace::WeakMap.new
+      live_state[:live_components][object_id] = self
+    end
+
+    { data_live_click: event_name.to_s, data_live_id: object_id }
   end
+
+  protected
+
+  attr_accessor :_parent, :_children
 
   private
 
@@ -72,6 +81,15 @@ class LiveView < Phlex::HTML
 
     @_streamed = true
     Fiber[:live_state][:update].call(payload)
+  end
+
+  def render(component)
+    return super unless component.is_a?(Phlex::HTML)
+
+    component._parent = self
+    (@_children ||= []) << component
+
+    super
   end
 
   # Phlex refuses to render an instance more than once. Because a live component
@@ -87,8 +105,8 @@ class LiveView < Phlex::HTML
   # render; the id is assigned once and preserved, so re-renders keep targeting
   # the same element.
   def around_template
-    Fiber[:live_state][:components][live_id] = self if Fiber[:live_state]
     @_pending_live_id = true
+    @_children&.clear
     super
   end
 

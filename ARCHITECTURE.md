@@ -41,7 +41,7 @@ Switching the transport to a **WebSocket** changes the model fundamentally:
   request).
 - **Components can simply *stay in memory*.** A rendered component is kept in the
   connection's fiber storage and re-used across events. This **removes `live_id`
-  entirely** (identity is just a registry key now) and lets components **hold transient UI
+  entirely** (identity is just an `object_id` now) and lets components **hold transient UI
   state**.
 
 ---
@@ -79,13 +79,13 @@ A CMS admin for articles (list / view / create / edit / delete). Concretely:
   │    (hydrate / link /      │                │   app.call(env) ── in THIS fiber ──┐│  conn
   │     form / back-fwd)      │                │     router → ArticlesController     ││
   │                           │                │       renders Phlex; LiveView      ││
-  │                           │                │       children self-register    ◄──┘│
+  │                           │                │       builds component tree     ◄──┘│
   │                           │ ◄═ WS msg ═════│   {action:"update", html, url}      │
-  │    morph document         │                │   live_state[:components] =          │
-  │                           │                │     {"el-8420"=>#<Card…>, …}         │
+  │    morph document         │                │   live_state[:root_component] =      │
+  │                           │                │     #<Index _children=[#<Card…>,…]>  │
   │ 4. click Publish          │ ═ WS msg ═════►│ receive → event                     │
-  │    {type:"event",         │                │   comp = registry["el-8420"]        │
-  │     id:"el-8420",         │                │   comp.handle_event → auto-replace  │
+  │    {type:"event",         │                │   comp = live_components[8420]      │
+  │     id:8420,              │                │   comp.handle_event → auto-replace  │
   │     event:"toggle_status"}│ ◄═ WS msg ═════│   {action:"replace", html}          │
   │    morph #el-8420         │                │                                     │
   └───────────────────────────┘                └─────────────────────────────────────┘
@@ -119,15 +119,16 @@ and blocking ActiveRecord calls yield to the scheduler instead of pinning a thre
 
 All connection state lives in `Fiber[:live_state]`, a hash with these keys:
 
-| Key          | What it is                                                                    |
-|--------------|-------------------------------------------------------------------------------|
-| `:update`    | A closure over this connection's `transmit` — how components push.            |
-| `:components`| Registry: `{ "el-8420" => <component>, … }` — the mounted components.         |
-| `:cleanup`   | Array of teardown lambdas (e.g. `Rage::PubSub.unsubscribe` calls) run on navigation and disconnect. |
+| Key               | What it is                                                                    |
+|-------------------|-------------------------------------------------------------------------------|
+| `:update`         | A closure over this connection's `transmit` — how components push.            |
+| `:root_component` | The root component of the current page — the entry point of the component tree. |
+| `:live_components`| `ObjectSpace::WeakMap` of `{ object_id => <component> }` — components that have event handlers (`live_click`). |
+| `:cleanup`        | Array of teardown lambdas (e.g. `Rage::PubSub.unsubscribe` calls) run on navigation and disconnect. |
 
 This is also what lets navigation delegate to a controller *and* have the rendered
-components register themselves here (see below): the controller runs **in this same
-fiber**, so `Fiber[:live_state][:components]` is the one the connection will read on the next event.
+components build a tree here (see below): the controller runs **in this same
+fiber**, so `Fiber[:live_state][:root_component]` is the one the connection will read on the next event.
 
 ### The building blocks
 
@@ -135,7 +136,7 @@ fiber**, so `Fiber[:live_state][:components]` is the one the connection will rea
 |-------|------|----------------|
 | **`LiveChannel`** | `app/channels/live_channel.rb` | The live session. Installs the fiber storage on `subscribe`; on `receive`, **delegates a `navigate` to the Rage app (controllers)** or delegates an `event` to the component's `handle_event`. |
 | **`ArticlesController`** | `app/controllers/articles_controller.rb` | Ordinary Rage controller. Serves **both** the initial HTTP load and every socket navigation — one implementation, two entry points. |
-| **`LiveView`** | `app/views/live_view.rb` | Base class for interactive components. Generates an id, registers the instance, wraps it in a `<div id>`, handles event dispatch with auto-`replace`, and provides stream ops (`replace`/`append`/`prepend`/`remove`) + `live_click`. Includes `ModelStream`. |
+| **`LiveView`** | `app/views/live_view.rb` | Base class for interactive components. Generates an id, maintains parent-child relationships, wraps it in a `<div id>`, handles event dispatch with auto-`replace`, and provides stream ops (`replace`/`append`/`prepend`/`remove`) + `live_click`. Includes `ModelStream`. |
 | **`ModelStream`** | `app/views/model_stream.rb` | The `stream` helper: subscribes a component to model changes via `Rage::PubSub`, auto-reloads via GlobalID, re-renders, and registers cleanup. Also provides `ModelStream.emit` for models. |
 | **`LiveUpdateJs`** | `app/views/live_update_js.rb` | ~140 lines of dependency-light client JS: WebSocket connect/reconnect, event delegation (clicks, forms, popstate), and applying server messages via morphlex. |
 | **`:phlex` renderer** | `config/application.rb` | Renders a component to HTML — used by controllers for both HTTP and socket rendering. |
@@ -151,8 +152,8 @@ All server↔client traffic is JSON over the one socket.
 **Client → server** (handled by `LiveChannel#receive`, keyed on `type`):
 
 ```jsonc
-{ "type": "navigate", "url": "/articles/42", "method": "GET" }        // link / form / popstate
-{ "type": "event",    "id": "el-8420", "event": "toggle_status" }     // a live_click
+{ "type": "navigate", "url": "/articles/42", "method": "GET" }   // link / form / popstate
+{ "type": "event",    "id": 8420, "event": "toggle_status" }     // a live_click (id is object_id)
 ```
 
 **Server → client** (via `Fiber[:live_state][:update]` → `transmit`, keyed on `action`):
@@ -176,8 +177,8 @@ complete HTML — good for first paint, direct links, and no-JS — and it embed
 **2. Hydration.** The script opens `new WebSocket("/live/live")`. `Rage::Cable` (in
 `:raw_websocket_json` mode) maps that path to `LiveChannel` and runs `subscribed`, which
 installs the fiber storage. The client immediately sends a `navigate` for the current URL.
-The server renders that page **inside the connection fiber**, which registers each
-`LiveView` child in `Fiber[:live_state][:components]`, and pushes it back as an `update`. The
+The server renders that page **inside the connection fiber**, which builds a component tree
+rooted at `Fiber[:live_state][:root_component]`, and pushes it back as an `update`. The
 client morphs it over the identical dead-rendered DOM — visually a no-op, but now the
 server holds live component instances for this tab.
 
@@ -210,37 +211,56 @@ Two things make this work:
 - **It runs in the current fiber.** The app is wrapped in `Rage.config.cable.middlewares`,
   *not* the HTTP stack — so it deliberately omits `Rage::FiberWrapper` (which would spawn a
   new request fiber). `app.call(env)` therefore executes synchronously in this connection's
-  fiber, and every `LiveView` the controller renders registers itself in *this*
-  `Fiber[:live_state][:components]`.
+  fiber, and every `LiveView` the controller renders builds a tree rooted at *this*
+  `Fiber[:live_state][:root_component]`.
 - **Redirects become the URL.** `ArticlesController` still uses `redirect_to` after a
   mutation; the channel reads the `Location` header and returns it as the canonical `url`
   for the client to place in history.
 
-**4. Events.** A `data-live-click` element sends an `event` message with the component id
-and method name. The channel looks the instance up in the registry — **it is still in
-memory, with all its state** — and delegates to `handle_event`. The method mutates state;
-if it doesn't explicitly call a stream op, `replace` is called automatically after the
-method returns, re-rendering and pushing the change to *this* connection.
+**4. Events.** A `data-live-click` element sends an `event` message with the component's
+`object_id` and method name. The channel looks the instance up in the `live_components`
+WeakMap — **it is still in memory, with all its state** — and delegates to `handle_event`.
+The method mutates state; if it doesn't explicitly call a stream op, `replace` is called
+automatically after the method returns, re-rendering and pushing the change to *this*
+connection.
 
-### Identity and state without `live_id`
+### Identity, state, and the component tree
 
-When a `LiveView` renders, `around_template` registers the **actual instance** in
-`Fiber[:live_state][:components]` and sets `@_pending_live_id`. The `AutoLiveId` patch
-then injects the `live_id` (derived from `object_id`) into the component's first body
-content element:
+Components form a tree rooted at `Fiber[:live_state][:root_component]`. Each component
+maintains `_parent` (a reference to its parent) and `_children` (an array of child
+components). The tree is built automatically: `LiveView#render` sets up parent-child
+relationships when rendering child components.
 
 ```ruby
 # app/views/live_view.rb
-def around_template
-  Fiber[:live_state][:components][live_id] = self if Fiber[:live_state]
-  @_pending_live_id = true
+def render(component)
+  return super unless component.is_a?(Phlex::HTML)
+
+  component._parent = self
+  (@_children ||= []) << component
+
   super
 end
+```
 
-def live_id
-  @live_id ||= "el-#{object_id}"
+Components that have event handlers (via `live_click`) are registered in
+`Fiber[:live_state][:live_components]`, an `ObjectSpace::WeakMap` keyed by `object_id`.
+This allows the channel to look up the component when an event arrives.
+
+```ruby
+# app/views/live_view.rb
+def live_click(event_name)
+  if (live_state = Fiber[:live_state])
+    live_state[:live_components] ||= ObjectSpace::WeakMap.new
+    live_state[:live_components][object_id] = self
+  end
+
+  { data_live_click: event_name.to_s, data_live_id: object_id }
 end
 ```
+
+The `AutoLiveId` patch injects a `live_id` (derived from `object_id`) into the
+component's first body content element:
 
 ```ruby
 # config/initializers/phlex_patch.rb — simplified
@@ -261,8 +281,26 @@ and freshly created components (e.g. an appended one) get a fresh id automatical
 from the initial dead render and the hydration render differ, which is fine: hydration
 sends a whole-document `update` that morphlex reconciles by structure anyway.
 
-Identity is now just a hash key into live objects — no string encoding, no DB round-trip
-to reconstruct. And because the instance persists, it can hold transient state. `Card`
+**Two distinct IDs.** The system uses two unrelated identifiers:
+
+| ID | Purpose | Value |
+|----|---------|-------|
+| `live_id` | DOM element `id` attribute — enables morphlex to efficiently diff and patch the correct element. | `"el-#{object_id}"` |
+| `data-live-id` | Server-side component lookup — the key into `live_components` for event dispatch. | `object_id` (integer) |
+
+Both happen to derive from `object_id`, but this is incidental. `live_id` must be a valid
+HTML id (string); `data-live-id` can be any value that uniquely identifies the component
+instance on the server.
+
+**Memory management.** When a component re-renders, `around_template` clears its
+`_children` array before rendering, allowing the new children to be built fresh. When a
+component is removed, it removes itself from its parent's `_children`. Because
+`live_components` is a `WeakMap`, components that are no longer referenced anywhere are
+automatically garbage collected — no manual cleanup required. This prevents memory leaks
+that would otherwise occur when re-rendering or removing components with children.
+
+Identity is now the component's `object_id` — no string encoding, no DB round-trip to
+reconstruct. And because the instance persists, it can hold transient state. `Card`
 demonstrates both kinds side by side:
 
 ```ruby
@@ -279,7 +317,8 @@ Event handlers don't need to call `replace` explicitly — `handle_event` calls 
 automatically if the method didn't invoke any stream operation.
 
 Toggling "Show more" repeatedly flips `@expanded` on the same instance across independent
-events. Navigating away resets the registry, which is exactly the right unmount semantics.
+events. Navigating away resets `root_component`, which is exactly the right unmount
+semantics — child components become unreachable and are garbage collected.
 
 ### Re-rendering a component that already rendered
 
@@ -389,6 +428,9 @@ is unreachable from the client.
   `WebSocket`, no client library.
 - Stateful, in-memory components stored per connection in fiber storage.
 - `live_id` removed; identity is the instance's `object_id`.
+- Component tree structure (`root_component` → `_children` → …) with automatic memory
+  management via `ObjectSpace::WeakMap` — re-rendering or removing a component with
+  children no longer leaks memory.
 - Transient UI state on components (`toggle_details` / `@expanded`).
 - **Navigation delegated to the Rage app** — one controller implementation serves both the
   HTTP load and every socket navigation (links, forms, back/forward, `_method` overrides).
@@ -425,7 +467,7 @@ app/
   models/
     article.rb             # after_commit -> ModelStream.emit on status change
   views/
-    live_view.rb           # LiveView base: identity, registry, stream ops, live_click
+    live_view.rb           # LiveView base: identity, component tree, stream ops, live_click
     model_stream.rb        # `stream` helper: model tracking, publish, cleanup
     live_update_js.rb       # client: WebSocket + event delegation + morphlex
     layout.rb              # shared HTML shell (main#main); embeds live_update_scripts
