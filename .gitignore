@@ -2,3 +2,12 @@ Gemfile.lock
 .DS_Store
 storage/
 .claude/
+/.bundle/
+/.yardoc
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/tmp/
+.rspec_status
