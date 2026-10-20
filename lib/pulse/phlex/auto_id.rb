@@ -1,6 +1,6 @@
-body_content_elements = Phlex::HTML::StandardElements.instance_methods + %i[tag] - %i[html head body title style]
-
 module Pulse::Phlex::AutoId
+  body_content_elements = Phlex::HTML::StandardElements.instance_methods + %i[tag] - %i[html head body title style]
+
   body_content_elements.each do |method_name|
     define_method(method_name) do |**attributes, &block|
       if @__pending_pulse_id
