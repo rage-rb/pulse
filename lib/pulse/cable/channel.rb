@@ -70,7 +70,8 @@ class Pulse::Cable::Channel < Rage::Cable::Channel
     if (body = data["body"])
       _env["rack.input"] = StringIO.new(body)
       _env["IODINE_HAS_BODY"] = true
-      _env["CONTENT_TYPE"] = "application/json"
+      _env["CONTENT_TYPE"] = data["contentType"]
+      _env["CONTENT_LENGTH"] = body.bytesize.to_s
     end
 
     _env
