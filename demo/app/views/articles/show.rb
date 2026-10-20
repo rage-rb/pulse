@@ -1,6 +1,6 @@
-class Articles::Show < LiveView
+class Articles::Show < Pulse::Component
   def initialize(article:)
-    @article = stream(article)
+    @article = track(article)
   end
 
   def view_template

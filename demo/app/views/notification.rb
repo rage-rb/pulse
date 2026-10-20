@@ -10,7 +10,7 @@
 # The component carries its own CSS (see `css` below) rather than relying on the
 # shared stylesheet in `Layout`, so it is self-contained: render it anywhere and
 # it brings its styles with it.
-class Notification < LiveView
+class Notification < Pulse::Component
   def initialize(message:, title: "Notification")
     @message = message
     @title = title

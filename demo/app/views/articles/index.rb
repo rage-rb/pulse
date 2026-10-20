@@ -1,4 +1,4 @@
-class Articles::Index < LiveView
+class Articles::Index < Pulse::Component
   def initialize(articles:)
     @articles = articles
   end

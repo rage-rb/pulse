@@ -1,6 +1,6 @@
-class Articles::Card < LiveView
+class Articles::Card < Pulse::Component
   def initialize(article:)
-    @article = stream(article) do |article|
+    @article = track(article) do |article|
       Notification.new(
         message: "The \"#{article.title}\" article status has been updated to '#{article.status}'"
       ).append(target: "main")
@@ -15,7 +15,7 @@ class Articles::Card < LiveView
         a(href: "/articles/#{@article.id}", class: "card-title") { @article.title }
         div(class: "actions") do
           span(class: "badge badge-#{@article.status}") { @article.status }
-          button(**live_click(:toggle_status), class: "btn btn-sm btn-secondary") do
+          button(click: :toggle_status, class: "btn btn-sm btn-secondary") do
             @article.status == "draft" ? "Publish" : "Unpublish"
           end
           a(href: "/articles/#{@article.id}/edit", class: "btn btn-secondary btn-sm") { "Edit" }
@@ -29,7 +29,7 @@ class Articles::Card < LiveView
         plain(@expanded ? @article.body : @article.body.truncate(150))
       end
       if @article.body.length > 150
-        button(**live_click(:toggle_details), class: "btn btn-sm btn-secondary") do
+        button(click: :toggle_details, class: "btn btn-sm btn-secondary") do
           @expanded ? "Show less" : "Show more"
         end
       end

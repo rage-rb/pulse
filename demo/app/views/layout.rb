@@ -1,6 +1,4 @@
-class Layout < LiveView
-  include LiveUpdateJs
-
+class Layout < Pulse::Component
   def initialize(title: "CMS Admin")
     @title = title
   end
@@ -24,7 +22,7 @@ class Layout < LiveView
           yield
         end
 
-        live_update_scripts
+        pulse_scripts
       end
     end
   end

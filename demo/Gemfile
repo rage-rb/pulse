@@ -1,6 +1,7 @@
 source "https://rubygems.org"
 
 gem "rage-rb", github: "rage-rb/rage", branch: "main"
+gem "pulse"
 
 gem "sqlite3"
 gem "activerecord"

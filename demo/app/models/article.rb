@@ -3,13 +3,13 @@ class Article < ApplicationRecord
   validates :body, presence: true
   validates :status, inclusion: { in: %w[draft published] }
 
-  after_commit :broadcast_status
+  after_commit :broadcast_status_update
 
   private
 
-  def broadcast_status
+  def broadcast_status_update
     if self.previous_changes.key?("status")
-      ModelStream.emit(self)
+      Pulse::Tracking.broadcast(self)
     end
   end
 end

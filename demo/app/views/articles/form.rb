@@ -1,4 +1,4 @@
-class Articles::Form < Phlex::HTML
+class Articles::Form < Pulse::Component
   def initialize(article:)
     @article = article
     @errors = article.errors.full_messages
