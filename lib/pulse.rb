@@ -2,7 +2,7 @@
 
 module Pulse
   module Cable
-    autoload :Channel, "pulse/cable/channel"
+    autoload :ViewChannel, "pulse/cable/view_channel"
   end
 
   module Phlex

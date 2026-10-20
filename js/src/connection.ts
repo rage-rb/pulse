@@ -7,7 +7,7 @@ interface ConnectionOptions {
 }
 
 const DEFAULT_RECONNECT_DELAY = 1000;
-const DEFAULT_CABLE_PATH = "/__pulse/channel";
+const DEFAULT_CABLE_PATH = "/__pulse/view";
 
 /**
  * A WebSocket that exchanges JSON messages and reconnects when the connection drops.

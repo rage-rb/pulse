@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Pulse::Cable::Channel < Rage::Cable::Channel
+class Pulse::Cable::ViewChannel < Rage::Cable::Channel
   def subscribed
     Fiber[:__pulse_state] = {
       update: ->(payload) { transmit(payload) },
