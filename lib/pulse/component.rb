@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Pulse::Component < Phlex::HTML
+  include Pulse::Scripts
+
   # @private
   def self.__event_handlers
     @__event_handlers ||= Set.new(public_instance_methods(false) - [:view_template])

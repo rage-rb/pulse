@@ -10,3 +10,7 @@ module Pulse
     autoload :EventHandlers, "pulse/phlex/event_handlers"
   end
 end
+
+require_relative "pulse/version"
+require_relative "pulse/scripts"
+require_relative "pulse/component"
