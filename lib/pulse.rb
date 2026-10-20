@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Pulse
+  autoload :Component, "pulse/component"
+
   module Cable
     autoload :ViewChannel, "pulse/cable/view_channel"
   end
@@ -13,4 +15,4 @@ end
 
 require_relative "pulse/version"
 require_relative "pulse/scripts"
-require_relative "pulse/component"
+require_relative "pulse/rage_extension"
