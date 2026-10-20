@@ -2,6 +2,7 @@
 
 class Pulse::Component < Phlex::HTML
   include Pulse::Scripts
+  include Pulse::Tracking
 
   # @private
   def self.__event_handlers

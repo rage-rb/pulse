@@ -33,4 +33,5 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "rage-rb", "~> 1.26"
+  spec.add_dependency "globalid", "~> 1.4"
 end
