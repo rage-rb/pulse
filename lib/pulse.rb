@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
-require_relative "pulse/version"
-
 module Pulse
-  class Error < StandardError; end
-  # Your code goes here...
+  module Cable
+    autoload :Channel, "pulse/cable/channel"
+  end
+
+  module Phlex
+    autoload :AutoId, "pulse/phlex/auto_id"
+    autoload :EventHandlers, "pulse/phlex/event_handlers"
+  end
 end
