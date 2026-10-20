@@ -20,10 +20,10 @@ class Pulse::Component < Phlex::HTML
 
     @_streamed = false
 
-    if instance_method(event).arity == 1
-      public_send(event)
-    else
+    if method(event).arity == 1
       public_send(event, params)
+    else
+      public_send(event)
     end
 
     replace unless @_streamed
