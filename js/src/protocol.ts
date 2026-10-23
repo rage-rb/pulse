@@ -6,7 +6,7 @@
 // targeted operations produced by a component's stream methods.
 export type ServerMessage =
   | { action: "update"; html: string; url?: string }
-  | { action: "replace"; html: string }
+  | { action: "replace"; html: string | Array<string> }
   | { action: "append"; target: string; html: string }
   | { action: "prepend"; target: string; html: string }
   | { action: "remove"; id: string }

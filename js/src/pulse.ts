@@ -38,7 +38,11 @@ export class Pulse {
         }
         break;
       case "replace":
-        morphElement(message.html);
+        if (Array.isArray(message.html)) {
+          message.html.forEach(html => morphElement(html));
+        } else {
+          morphElement(message.html);
+        }
         break;
       case "append":
         insertHTML(message.target, "beforeend", message.html);

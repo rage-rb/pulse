@@ -7,7 +7,7 @@ module Pulse::Identity
     # Declares which attributes define this component's identity.
     #
     # @param args [Array<Symbol, String>] Instance variables (e.g., `:@article`) or
-    #   method names to use for identity/fingerprint calculation.
+    #   method names to use for identity calculation.
     # @raise [ArgumentError] If a method name is provided that doesn't exist.
     #
     # @example
@@ -22,16 +22,12 @@ module Pulse::Identity
       end
 
       args_identity_elements = args.map { |arg| "#{arg}" }.join(", ")
-      args_fingerprint_elements = args.map { |arg| "process_fingerprint(#{arg})" }.join(", ")
 
       class_eval <<~RUBY, __FILE__, __LINE__ + 1
-        protected def identity = [self.class, #{args_identity_elements}]
-        protected def fingerprint = [#{args_fingerprint_elements}]
+        def identity = [self.class, #{args_identity_elements}]
       RUBY
     end
   end
-
-  protected
 
   # Returns the component's identity for reconciliation lookup.
   #
@@ -40,33 +36,6 @@ module Pulse::Identity
   def identity
     instance_variables.each_with_object([self.class]) do |ivar, memo|
       memo << instance_variable_get(ivar) unless ivar.start_with?("@_")
-    end
-  end
-
-  # Returns a content-based fingerprint for change detection.
-  #
-  # Used to determine if a component's inputs have changed since the last render.
-  # If the fingerprint matches the stored fingerprint, re-rendering can be skipped.
-  def fingerprint
-    instance_variables.filter_map do |ivar|
-      unless ivar.start_with?("@_")
-        process_fingerprint(instance_variable_get(ivar))
-      end
-    end
-  end
-
-  private
-
-  # Processes a value into a comparable fingerprint representation.
-  def process_fingerprint(value)
-    if value.is_a?(ActiveRecord::Base)
-      [value.class, value.attributes.hash]
-    elsif value.is_a?(Hash)
-      process_fingerprint(value.to_a)
-    elsif value.is_a?(Array)
-      value.map { |v| process_fingerprint(v) }
-    else
-      value.hash
     end
   end
 end

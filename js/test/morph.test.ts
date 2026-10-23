@@ -85,6 +85,118 @@ describe("morphElement", () => {
     expect(input.value).toBe("typed");
   });
 
+  it("preserves and reorders elements represented by stubs", () => {
+    document.body.innerHTML = `
+      <div id="list" class="list">
+        <span id="item_1" class="item">Item 1</span>
+        <span id="item_2" class="item">Item 2</span>
+        <span id="item_3" class="item">Item 3</span>
+      </div>
+    `;
+    const list = document.getElementById("list")!;
+    const item1 = document.getElementById("item_1")!;
+    const item2 = document.getElementById("item_2")!;
+
+    expect(morphElement(`
+      <div id="list" class="list highlighted">
+        <div id="item_2" data-pulse-stub></div>
+        <div id="item_1" data-pulse-stub></div>
+      </div>
+    `)).toBe(true);
+
+    expect(document.getElementById("list")).toBe(list);
+    expect(list.className).toBe("list highlighted");
+    expect([...list.children]).toEqual([item2, item1]);
+    expect(item1.outerHTML).toBe(`<span id="item_1" class="item">Item 1</span>`);
+    expect(item2.outerHTML).toBe(`<span id="item_2" class="item">Item 2</span>`);
+    expect(document.getElementById("item_3")).toBeNull();
+  });
+
+  it("updates rendered children alongside preserved stubbed children", () => {
+    document.body.innerHTML = `
+      <div id="list">
+        <span id="item_1">Old</span>
+        <span id="item_2"><input value="original"></span>
+      </div>
+    `;
+    const item1 = document.getElementById("item_1")!;
+    const item2 = document.getElementById("item_2")!;
+    const input = item2.querySelector("input")!;
+    input.value = "typed";
+
+    morphElement(`
+      <div id="list">
+        <span id="item_1" class="changed">New</span>
+        <div id="item_2" data-pulse-stub></div>
+      </div>
+    `);
+
+    expect(document.getElementById("item_1")).toBe(item1);
+    expect(item1.outerHTML).toBe(`<span id="item_1" class="changed">New</span>`);
+    expect(document.getElementById("item_2")).toBe(item2);
+    expect(input.value).toBe("typed");
+  });
+
+  it("treats an empty root stub as a no-op even when its tag differs", () => {
+    document.body.innerHTML = `<article id="card" class="card"><input value="original"></article>`;
+    const card = document.getElementById("card")!;
+    const input = card.querySelector("input")!;
+    input.value = "typed";
+
+    expect(morphElement(`
+      <div id="card" data-pulse-stub>
+      </div>
+    `)).toBe(true);
+
+    expect(document.getElementById("card")).toBe(card);
+    expect(card.outerHTML).toBe(`<article id="card" class="card"><input value="original"></article>`);
+    expect(input.value).toBe("typed");
+  });
+
+  it("does not insert a stale stub with no live match", () => {
+    document.body.innerHTML = `<div id="list"></div>`;
+
+    morphElement(`<div id="list"><div id="missing" data-pulse-stub></div></div>`);
+
+    expect(document.getElementById("list")!.children).toHaveLength(0);
+    expect(document.querySelector("[data-pulse-stub]")).toBeNull();
+  });
+
+  it("removes stale nested stubs from a newly inserted subtree", () => {
+    document.body.innerHTML = `<div id="list"><p>Old</p></div>`;
+
+    morphElement(`
+      <div id="list">
+        <section class="new">
+          <div id="missing" data-pulse-stub></div>
+          <strong>New</strong>
+        </section>
+      </div>
+    `);
+
+    const section = document.querySelector("#list > section.new")!;
+    expect(section.querySelector("[data-pulse-stub]")).toBeNull();
+    expect(section.children).toHaveLength(1);
+    expect(section.firstElementChild!.outerHTML).toBe(`<strong>New</strong>`);
+  });
+
+  it("morphs children supplied by a content-bearing stub while keeping live attributes", () => {
+    document.body.innerHTML = `<section id="wrapper" class="live"><p>Old</p></section>`;
+    const wrapper = document.getElementById("wrapper")!;
+
+    morphElement(`
+      <div id="wrapper" data-pulse-stub>
+        <p>New</p>
+      </div>
+    `);
+
+    expect(document.getElementById("wrapper")).toBe(wrapper);
+    expect(wrapper.tagName).toBe("SECTION");
+    expect(wrapper.className).toBe("live");
+    expect(wrapper.querySelector("p")!.textContent).toBe("New");
+    expect(wrapper.hasAttribute("data-pulse-stub")).toBe(false);
+  });
+
   it("returns false when the new root element has no id", () => {
     document.body.innerHTML = `<div>Old</div>`;
 

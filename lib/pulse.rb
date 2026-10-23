@@ -15,6 +15,8 @@ end
 
 require_relative "pulse/version"
 require_relative "pulse/scripts"
+require_relative "pulse/marker"
 require_relative "pulse/tracking"
 require_relative "pulse/identity"
+require_relative "pulse/fingerprint"
 require_relative "pulse/rage_extension"

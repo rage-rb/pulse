@@ -4,6 +4,8 @@ class Pulse::Component < Phlex::HTML
   include Pulse::Scripts
   include Pulse::Tracking
   include Pulse::Identity
+  include Pulse::Fingerprint
+  include Pulse::Marker
 
   # @private
   def self.__event_handlers
@@ -52,13 +54,13 @@ class Pulse::Component < Phlex::HTML
   def remove
     return unless Fiber[:__pulse_state]
 
-    @__parent&.__children&.delete(self)
+    @__parent&.__children&.delete(self.identity)
     emit(action: "remove", id: pulse_id)
   end
 
   protected
 
-  attr_accessor :__parent, :__children
+  attr_accessor :__parent, :__children, :__cached_fingerprint
 
   def pulse_id
     @pulse_id ||= object_id.to_s
@@ -73,24 +75,62 @@ class Pulse::Component < Phlex::HTML
     Fiber[:__pulse_state][:update].call(payload)
   end
 
-  def render(component)
-    return super unless component.is_a?(Phlex::HTML)
+  def render(component, &block)
+    return super unless Fiber[:__pulse_state] && component.is_a?(Pulse::Component)
 
-    component.__parent = self
-    (@__children ||= []) << component
+    identity = component.identity
+    existing_child = @__children&.dig(identity)
 
-    super
+    unless existing_child
+      (@__children ||= {})[identity] = component.tap(&:__mark)
+      component.__parent = self
+      return super
+    end
+
+    if existing_child.__cached_fingerprint == component.fingerprint
+      existing_child.__mark
+      div(id: existing_child.pulse_id, data_pulse_stub: true)
+
+      if block
+        # send blocks as distinct patches
+        @__pending_pulse_id = true
+        (Fiber[:__pulse_block_html] ||= []) << capture(&block)
+      end
+    else
+      @__children[identity] = component.tap(&:__mark)
+      super
+    end
   end
 
   def render_html
     # Phlex normally refuses to render an instance more than once
     @_state = nil
-    call
+
+    html = call
+    block_html = Fiber[:__pulse_block_html]
+
+    if block_html
+      block_html.unshift(html)
+    else
+      html
+    end
+
+  ensure
+    Fiber[:__pulse_block_html] = nil
   end
 
   def around_template
     @__pending_pulse_id = true
-    @__children&.clear
     super
+
+    @__children&.delete_if do |_, component|
+      should_delete = !component.__marked?
+      component.__unmark
+
+      should_delete
+    end
+
+  ensure
+    @__cached_fingerprint = fingerprint
   end
 end
