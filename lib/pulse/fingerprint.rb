@@ -32,9 +32,14 @@ module Pulse::Fingerprint
 
   private
 
+  # Calculate fingerprint for different input types.
+  # `hash` is used as a cheaper alternative to duplication in order to support in-place edits.
+  # Active Record's dirty edits are not supported - it would require calling `changed?` or
+  # `attributes`, which are very slow - doing this for every single component render
+  # to support the minority of cases is not viable.
   def calculate_fingerprint(value)
     if value.is_a?(ActiveRecord::Base)
-      [value.class.hash, value.attributes.hash]
+      value[:updated_at].nil? ? value.attributes.hash : [value.hash, value.updated_at]
     elsif value.is_a?(Hash)
       calculate_fingerprint(value.to_a)
     elsif value.is_a?(Array)
