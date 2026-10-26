@@ -17,7 +17,7 @@ class Articles::Index < Pulse::Component
             a(href: "/articles/new", class: "btn btn-primary") { "Create your first article" }
           end
         else
-          @articles.each { |article| render Articles::Card.new(article: article) }
+          @articles.each { |article| render Articles::Card.new(article:), key: article.id }
         end
       end
     end

@@ -3,7 +3,6 @@
 class Pulse::Component < Phlex::HTML
   include Pulse::Scripts
   include Pulse::Tracking
-  include Pulse::Identity
   include Pulse::Fingerprint
   include Pulse::Marker
 
@@ -54,13 +53,13 @@ class Pulse::Component < Phlex::HTML
   def remove
     return unless Fiber[:__pulse_state]
 
-    @__parent&.__children&.delete(self.identity)
+    @__parent&.__children&.delete(@__identity)
     emit(action: "remove", id: pulse_id)
   end
 
   protected
 
-  attr_accessor :__parent, :__children, :__cached_fingerprint
+  attr_accessor :__parent, :__children, :__cached_fingerprint, :__identity
 
   def pulse_id
     @pulse_id ||= object_id.to_s
@@ -75,16 +74,15 @@ class Pulse::Component < Phlex::HTML
     Fiber[:__pulse_state][:update].call(payload)
   end
 
-  def render(component, &block)
-    return super unless Fiber[:__pulse_state] && component.is_a?(Pulse::Component)
+  def render(component, key: nil, &block)
+    return super(component, &block) unless Fiber[:__pulse_state] && component.is_a?(Pulse::Component)
 
-    identity = component.identity
+    identity = [component.class, key]
     existing_child = @__children&.dig(identity)
 
     unless existing_child
-      (@__children ||= {})[identity] = component.tap(&:__mark)
-      component.__parent = self
-      return super
+      store_child_component(component, identity)
+      return super(component, &block)
     end
 
     if existing_child.__cached_fingerprint == component.fingerprint
@@ -97,8 +95,8 @@ class Pulse::Component < Phlex::HTML
         (Fiber[:__pulse_block_html] ||= []) << capture(&block)
       end
     else
-      @__children[identity] = component.tap(&:__mark)
-      super
+      store_child_component(component, identity)
+      super(component, &block)
     end
   end
 
@@ -122,15 +120,23 @@ class Pulse::Component < Phlex::HTML
   def around_template
     @__pending_pulse_id = true
     super
+    cleanup_child_components
+  ensure
+    @__cached_fingerprint = fingerprint
+  end
 
+  def store_child_component(component, identity)
+    (@__children ||= {})[identity] = component.tap(&:__mark)
+    component.__identity = identity
+    component.__parent = self
+  end
+
+  def cleanup_child_components
     @__children&.delete_if do |_, component|
       should_delete = !component.__marked?
       component.__unmark
 
       should_delete
     end
-
-  ensure
-    @__cached_fingerprint = fingerprint
   end
 end
