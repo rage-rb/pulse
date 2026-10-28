@@ -120,6 +120,7 @@ class Pulse::Component < Phlex::HTML
   def around_template
     @__pending_pulse_id = true
     super
+    __activate_subscriptions
     cleanup_child_components
   ensure
     @__cached_fingerprint = fingerprint
