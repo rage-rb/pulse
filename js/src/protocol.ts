@@ -24,4 +24,4 @@ export interface FormSubmitOptions {
 // "event" dispatches a server-side event handler on a specific component.
 export type ClientMessage =
   | ({ type: "navigate"; url: string } & FormSubmitOptions)
-  | { type: "event"; id: string; event: string; params?: unknown };
+  | { type: "event"; id: string; event: string; payload?: unknown };

@@ -71,36 +71,12 @@ describe("data-pulse-click", () => {
     expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("counter_1", "increment", undefined);
   });
 
-  it("parses JSON params", () => {
-    render(`<button data-pulse-click="add" data-pulse-component-id="counter_1" data-pulse-params='{"by":2,"tags":["a"]}'>+</button>`);
+  it("passes params through", () => {
+    render(`<button data-pulse-click="tag" data-pulse-component-id="post_1" data-pulse-payload='{"language":"ruby"}'>#</button>`);
 
     click(find("button"));
 
-    expect(pulse.sendEvent).toHaveBeenCalledWith("counter_1", "add", { by: 2, tags: ["a"] });
-  });
-
-  it("parses scalar JSON params", () => {
-    render(`<button data-pulse-click="add" data-pulse-component-id="counter_1" data-pulse-params="5">+</button>`);
-
-    click(find("button"));
-
-    expect(pulse.sendEvent).toHaveBeenCalledWith("counter_1", "add", 5);
-  });
-
-  it("passes non-JSON params through as a string", () => {
-    render(`<button data-pulse-click="tag" data-pulse-component-id="post_1" data-pulse-params="ruby">#</button>`);
-
-    click(find("button"));
-
-    expect(pulse.sendEvent).toHaveBeenCalledWith("post_1", "tag", "ruby");
-  });
-
-  it("passes empty params through as an empty string", () => {
-    render(`<button data-pulse-click="tag" data-pulse-component-id="post_1" data-pulse-params="">#</button>`);
-
-    click(find("button"));
-
-    expect(pulse.sendEvent).toHaveBeenCalledWith("post_1", "tag", "");
+    expect(pulse.sendEvent).toHaveBeenCalledWith("post_1", "tag", '{"language":"ruby"}');
   });
 
   it("ignores triggers without a component id", () => {

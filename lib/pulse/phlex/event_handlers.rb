@@ -4,7 +4,7 @@ module Pulse::Phlex::EventHandlers
       return super(**attributes, &block) unless click
 
       component_id = object_id
-      event_name, params = click
+      event_name, payload = click
 
       if (pulse_state = Fiber[:__pulse_state])
         pulse_state[:interactive_components] ||= ObjectSpace::WeakMap.new
@@ -14,7 +14,7 @@ module Pulse::Phlex::EventHandlers
       attributes = attributes.merge({
         data_pulse_click: event_name.to_s,
         data_pulse_component_id: component_id,
-        data_pulse_params: params&.to_json
+        data_pulse_payload: payload&.to_json
       })
 
       super(**attributes, &block)

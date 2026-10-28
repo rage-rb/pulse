@@ -93,7 +93,7 @@ export class Pulse {
   /**
    * Dispatch a server-side event handler on the component with the given id.
    */
-  sendEvent(id: string, event: string, params?: unknown) {
-    this.connection.send({ type: "event", id, event, params });
+  sendEvent(id: string, event: string, payload?: string) {
+    this.connection.send({ type: "event", id, event, payload });
   }
 }

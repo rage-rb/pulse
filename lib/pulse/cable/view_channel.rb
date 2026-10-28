@@ -29,7 +29,7 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
 
   # Dispatch an event to the component.
   def handle_event(data)
-    pulse_id, event, params = data["id"].to_i, data["event"].to_sym, data["params"]
+    pulse_id, event, payload = data["id"].to_i, data["event"].to_sym, data["payload"]
     component = Fiber[:__pulse_state][:interactive_components][pulse_id]
 
     unless component
@@ -37,7 +37,7 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
       return
     end
 
-    component.__handle_event(event, params, env:)
+    component.__handle_event(event, payload, env:)
   end
 
   # Render a root component replacing the whole page.

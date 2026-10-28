@@ -37,13 +37,13 @@ function handleEventClick(event: MouseEvent, pulse: Pulse) {
 
   event.preventDefault();
 
-  const { pulseClick, pulseComponentId, pulseParams } = trigger.dataset;
+  const { pulseClick, pulseComponentId, pulsePayload } = trigger.dataset;
   if (!pulseComponentId) {
     console.warn("[pulse] Ignoring data-pulse-click without data-pulse-component-id", trigger);
     return;
   }
 
-  pulse.sendEvent(pulseComponentId, pulseClick!, parseParams(pulseParams));
+  pulse.sendEvent(pulseComponentId, pulseClick!, pulsePayload);
 }
 
 /**
@@ -110,17 +110,6 @@ function shouldInterceptLink(link: HTMLAnchorElement, event: MouseEvent) {
   if (link.hash && link.pathname + link.search === currentPath()) return false;
 
   return true;
-}
-
-function parseParams(raw: string | undefined): unknown {
-  if (raw === undefined) return undefined;
-
-  // `data-pulse-params` holds JSON; anything else is passed through as a string.
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return raw;
-  }
 }
 
 function encodeFormData(formData: FormData) {
