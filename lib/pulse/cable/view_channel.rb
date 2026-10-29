@@ -6,7 +6,7 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
       update: ->(payload) { transmit(payload) },
       interactive_components: nil,
       root_component: nil,
-      cleanup: []
+      cleanup: nil
     }
   end
 
@@ -82,6 +82,6 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
     state = Fiber[:__pulse_state]
 
     state[:root_component] = nil
-    state[:cleanup].each(&:call).clear
+    state[:cleanup].each_value(&:call).clear if state[:cleanup]
   end
 end

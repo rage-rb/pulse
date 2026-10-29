@@ -29,7 +29,13 @@ module Pulse::Tracking
         end
       end
 
-      Fiber[:__pulse_state][:cleanup] << -> { Rage::PubSub.unsubscribe(topic: model, subscription_id: self) }
+      cleanup = (Fiber[:__pulse_state][:cleanup] ||= {})
+      prev_proc = cleanup[self]
+
+      cleanup[self] = -> do
+        prev_proc&.call
+        Rage::PubSub.unsubscribe(topic: model, subscription_id: self)
+      end
     end
 
     wrapped
@@ -43,7 +49,7 @@ module Pulse::Tracking
     Rage::PubSub.publish(model.to_global_id(app: "pulse").to_s, topic: model)
   end
 
-  private
+  protected
 
   def __add_subscription(&block)
     (@__subscriptions ||= []) << block
@@ -54,5 +60,10 @@ module Pulse::Tracking
       @__subscriptions&.each(&:call)
       @__subscriptions = nil
     end
+  end
+
+  def __cleanup_subscriptions
+    cleanup = Fiber[:__pulse_state][:cleanup]
+    cleanup&.delete(self)&.call
   end
 end

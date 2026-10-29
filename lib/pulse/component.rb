@@ -54,6 +54,7 @@ class Pulse::Component < Phlex::HTML
   def remove
     return unless Fiber[:__pulse_state]
 
+    __cleanup_subscriptions
     @__parent&.__children&.delete(@__identity)
     emit(action: "remove", id: pulse_id)
   end
@@ -96,6 +97,8 @@ class Pulse::Component < Phlex::HTML
         (Fiber[:__pulse_block_html] ||= []) << capture(&block)
       end
     else
+      # TODO: re-render old component instead?
+      existing_child.__cleanup_subscriptions
       store_child_component(component, identity)
       super(component, &block)
     end
@@ -135,7 +138,10 @@ class Pulse::Component < Phlex::HTML
 
   def cleanup_child_components
     @__children&.delete_if do |_, component|
-      should_delete = !component.__marked?
+      unless component.__marked?
+        should_delete = true
+        component.__cleanup_subscriptions
+      end
       component.__unmark
 
       should_delete
