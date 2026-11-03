@@ -19,5 +19,6 @@ class Pulse::RageExtension < Rage::Extension
 
   routes do
     mount Rage::Cable.application(namespace: Pulse::Cable, protocol: :raw_websocket_json), at: "__pulse"
+    mount Pulse::Scripts, at: Pulse::Scripts::MOUNT_PATH, via: :get
   end
 end
