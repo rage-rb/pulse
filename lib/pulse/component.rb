@@ -12,10 +12,10 @@ class Pulse::Component < Phlex::HTML
   end
 
   # @private
-  # @param event [String]
-  # @param payload [String]
+  # @param event [Symbol]
+  # @param data [Hash, nil] the event data (input value, key, form fields)
   # @param env [Hash]
-  def __handle_event(event, payload, env:)
+  def __handle_event(event, data, env:)
     unless self.class.__event_handlers.include?(event)
       Rage.logger.debug("Unknown event received", event:)
       return
@@ -24,8 +24,8 @@ class Pulse::Component < Phlex::HTML
     @_streamed = false
 
     if method(event).arity == 1
-      parsed_payload = JSON.parse(payload, symbolize_names: true)
-      public_send(event, parsed_payload)
+      event_payload = Pulse::Event.new(data || {})
+      public_send(event, event_payload)
     else
       public_send(event)
     end

@@ -29,15 +29,15 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
 
   # Dispatch an event to the component.
   def handle_event(data)
-    pulse_id, event, payload = data["id"].to_i, data["event"].to_sym, data["payload"]
-    component = Fiber[:__pulse_state][:interactive_components][pulse_id]
+    pulse_id, event, event_data = data["id"].to_i, data["event"].to_sym, data["data"]
+    component = Fiber[:__pulse_state][:interactive_components]&.[](pulse_id)
 
     unless component
       Rage.logger.debug("Couldn't find a component to handle event", component_id: pulse_id, event:)
       return
     end
 
-    component.__handle_event(event, payload, env:)
+    component.__handle_event(event, event_data, env:)
   end
 
   # Render a root component replacing the whole page.
