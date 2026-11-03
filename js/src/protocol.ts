@@ -20,8 +20,16 @@ export interface FormSubmitOptions {
   hash?: string;
 }
 
+export interface EventData {
+  form?: string;
+  key?: string;
+  payload?: string;
+  value?: string | Array<string>;
+  checked?: boolean;
+}
+
 // Client -> server. "navigate" asks the server to render a page into this connection;
 // "event" dispatches a server-side event handler on a specific component.
 export type ClientMessage =
   | ({ type: "navigate"; url: string } & FormSubmitOptions)
-  | { type: "event"; id: string; event: string; payload?: unknown };
+  | { type: "event"; id: string; event: string; data?: EventData };

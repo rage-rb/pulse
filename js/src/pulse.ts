@@ -1,7 +1,7 @@
 import { Connection } from "./connection";
 import { currentLocationOptions, currentPath } from "./location";
 import { insertHTML, morphElement, morphPage, removeElement } from "./morph";
-import type { FormSubmitOptions, ServerMessage } from "./protocol";
+import type { EventData, FormSubmitOptions, ServerMessage } from "./protocol";
 
 declare global {
   interface Window {
@@ -93,7 +93,7 @@ export class Pulse {
   /**
    * Dispatch a server-side event handler on the component with the given id.
    */
-  sendEvent(id: string, event: string, payload?: string) {
-    this.connection.send({ type: "event", id, event, payload });
+  sendEvent(id: string, event: string, data?: EventData) {
+    this.connection.send({ type: "event", id, event, data });
   }
 }

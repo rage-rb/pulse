@@ -241,14 +241,25 @@ describe("Pulse", () => {
 
   describe("sendEvent", () => {
     it("dispatches the event to the component", () => {
-      const payload = JSON.stringify({ by: 2 })
+      const data = { payload: '{"by":2}' };
 
-      pulse.sendEvent("counter_1", "increment", payload);
+      pulse.sendEvent("counter_1", "increment", data);
 
-      expect(socket.messages.at(-1)).toEqual({ type: "event", id: "counter_1", event: "increment", payload });
+      expect(socket.messages.at(-1)).toEqual({ type: "event", id: "counter_1", event: "increment", data });
     });
 
-    it("omits params when there are none", () => {
+    it("sends form data", () => {
+      pulse.sendEvent("search_1", "filter", { form: "q=pulse" });
+
+      expect(socket.messages.at(-1)).toEqual({
+        type: "event",
+        id: "search_1",
+        event: "filter",
+        data: { form: "q=pulse" },
+      });
+    });
+
+    it("omits data when there is none", () => {
       pulse.sendEvent("counter_1", "increment");
 
       expect(socket.sent.at(-1)).toBe(`{"type":"event","id":"counter_1","event":"increment"}`);

@@ -71,12 +71,12 @@ describe("data-pulse-click", () => {
     expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("counter_1", "increment", undefined);
   });
 
-  it("passes params through", () => {
-    render(`<button data-pulse-click="tag" data-pulse-component-id="post_1" data-pulse-payload='{"language":"ruby"}'>#</button>`);
+  it("passes the static payload through without parsing it", () => {
+    render(`<button data-pulse-click="tag" data-pulse-component-id="post_1" data-pulse-click-payload='{"language":"ruby"}'>#</button>`);
 
     click(find("button"));
 
-    expect(pulse.sendEvent).toHaveBeenCalledWith("post_1", "tag", '{"language":"ruby"}');
+    expect(pulse.sendEvent).toHaveBeenCalledWith("post_1", "tag", { payload: '{"language":"ruby"}' });
   });
 
   it("ignores triggers without a component id", () => {
@@ -90,9 +90,9 @@ describe("data-pulse-click", () => {
   });
 
   it("takes precedence over an enclosing link", () => {
-    render(`<a href="/posts/1"><button data-pulse-click="like" data-pulse-component-id="post_1">♥</button></a>`);
+    render(`<a href="/posts/1"><span data-pulse-click="like" data-pulse-component-id="post_1">♥</span></a>`);
 
-    expect(click(find("button"))).toBe(true);
+    expect(click(find("span"))).toBe(true);
     expect(pulse.sendEvent).toHaveBeenCalledOnce();
     expect(pulse.visit).not.toHaveBeenCalled();
   });
@@ -117,6 +117,245 @@ describe("data-pulse-click", () => {
     click(button);
 
     expect(pulse.sendEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("click default action", () => {
+  it.each([
+    ["links", `<a href="/posts/1" data-pulse-click="open" data-pulse-component-id="c">x</a>`, "a"],
+    ["buttons", `<form action="/posts" method="post"><button data-pulse-click="save" data-pulse-component-id="c">x</button></form>`, "button"],
+    ["submit inputs", `<form action="/posts" method="post"><input type="submit" data-pulse-click="save" data-pulse-component-id="c"></form>`, "input"],
+  ])("is cancelled for %s", (_, html, selector) => {
+    render(html);
+
+    expect(click(find(selector))).toBe(true);
+    expect(pulse.sendEvent).toHaveBeenCalledOnce();
+    expect(pulse.visit).not.toHaveBeenCalled();
+    expect(pulse.navigate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["checkboxes", `<input type="checkbox" data-pulse-click="toggle" data-pulse-component-id="c">`, "input"],
+    ["arbitrary elements", `<div data-pulse-click="select" data-pulse-component-id="c">x</div>`, "div"],
+  ])("is kept for %s", (_, html, selector) => {
+    render(html);
+
+    expect(click(find(selector))).toBe(false);
+    expect(pulse.sendEvent).toHaveBeenCalledOnce();
+  });
+
+  it("keeps checkboxes checkable", () => {
+    render(`<input type="checkbox" data-pulse-click="toggle" data-pulse-component-id="c">`);
+    const checkbox = find<HTMLInputElement>("input");
+
+    checkbox.click();
+
+    expect(checkbox.checked).toBe(true);
+  });
+});
+
+describe("data-pulse-input / data-pulse-change", () => {
+  function fire(element: Element, type: "input" | "change") {
+    element.dispatchEvent(new Event(type, { bubbles: true }));
+  }
+
+  it("sends the value of the control", () => {
+    render(`<input name="q" value="pulse" data-pulse-input="search" data-pulse-component-id="s">`);
+
+    fire(find("input"), "input");
+
+    expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("s", "search", { value: "pulse" });
+  });
+
+  it("includes the static payload alongside the control value", () => {
+    render(`<input value="5" data-pulse-change="rate" data-pulse-component-id="s" data-pulse-change-payload='{"id":1,"value":"x"}'>`);
+
+    fire(find("input"), "change");
+
+    expect(pulse.sendEvent).toHaveBeenCalledWith("s", "rate", {
+      value: "5",
+      payload: '{"id":1,"value":"x"}',
+    });
+  });
+
+  it("sends whether checkboxes are checked", () => {
+    render(`<input type="checkbox" value="yes" checked data-pulse-change="toggle" data-pulse-component-id="s">`);
+
+    fire(find("input"), "change");
+
+    expect(pulse.sendEvent).toHaveBeenCalledWith("s", "toggle", { value: "yes", checked: true });
+  });
+
+  it("sends all selected values of multi-selects", () => {
+    render(`
+      <select multiple data-pulse-change="filter" data-pulse-component-id="s">
+        <option value="ruby" selected>Ruby</option>
+        <option value="js">JS</option>
+        <option value="go" selected>Go</option>
+      </select>
+    `);
+
+    fire(find("select"), "change");
+
+    expect(pulse.sendEvent).toHaveBeenCalledWith("s", "filter", { value: ["ruby", "go"] });
+  });
+
+  it("sends all fields when bound on a form", () => {
+    render(`
+      <form data-pulse-change="filter" data-pulse-component-id="s">
+        <input name="q" value="pulse">
+        <input type="checkbox" name="tags[]" value="ruby" checked>
+      </form>
+    `);
+
+    fire(find("input[name=q]"), "change");
+
+    expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("s", "filter", { form: "q=pulse&tags%5B%5D=ruby" });
+  });
+
+  it("only handles the bound event type", () => {
+    render(`<input data-pulse-change="save" data-pulse-component-id="s">`);
+
+    fire(find("input"), "input");
+
+    expect(pulse.sendEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("data-pulse-submit", () => {
+  it("sends the form fields to the component instead of navigating", () => {
+    render(`
+      <form action="/posts" method="post" data-pulse-submit="save" data-pulse-component-id="f">
+        <input name="title" value="Hello">
+        <button name="commit" value="publish">Publish</button>
+      </form>
+    `);
+
+    expect(submit(find<HTMLFormElement>("form"), find<HTMLElement>("button"))).toBe(true);
+    expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("f", "save", { form: "title=Hello&commit=publish" });
+    expect(pulse.navigate).not.toHaveBeenCalled();
+  });
+
+  it("sends form fields when the handler is on an ancestor", () => {
+    render(`
+      <div data-pulse-submit="save" data-pulse-component-id="f">
+        <form action="/posts" method="post">
+          <input name="title" value="Hello">
+          <button name="commit" value="publish">Publish</button>
+        </form>
+      </div>
+    `);
+
+    expect(submit(find<HTMLFormElement>("form"), find<HTMLElement>("button"))).toBe(true);
+    expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("f", "save", { form: "title=Hello&commit=publish" });
+    expect(pulse.navigate).not.toHaveBeenCalled();
+  });
+
+  it("is cancelled even without a component id", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    render(`<form action="/posts" method="post" data-pulse-submit="save"></form>`);
+
+    expect(submit(find<HTMLFormElement>("form"))).toBe(true);
+    expect(pulse.navigate).not.toHaveBeenCalled();
+  });
+});
+
+describe("data-pulse-keydown / data-pulse-keyup", () => {
+  function press(element: Element, key: string, type: "keydown" | "keyup" = "keydown") {
+    element.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true, cancelable: true }));
+  }
+
+  it("sends the key", () => {
+    render(`<input data-pulse-keyup="typed" data-pulse-component-id="k">`);
+
+    press(find("input"), "a", "keyup");
+
+    expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("k", "typed", { key: "a" });
+  });
+
+  it("filters by key, case-insensitively", () => {
+    render(`<input data-pulse-keydown="add" data-pulse-keydown-key="enter" data-pulse-component-id="k">`);
+    const input = find("input");
+
+    press(input, "a");
+    press(input, "Enter");
+
+    expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("k", "add", { key: "Enter" });
+  });
+
+  it("falls through to an enclosing trigger for other keys", () => {
+    render(`
+      <div data-pulse-keydown="close" data-pulse-keydown-key="Escape" data-pulse-component-id="modal">
+        <input data-pulse-keydown="add" data-pulse-keydown-key="Enter" data-pulse-component-id="list">
+      </div>
+    `);
+
+    press(find("input"), "Escape");
+
+    expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("modal", "close", { key: "Escape" });
+  });
+
+  it("does not cancel the key press", () => {
+    render(`<input data-pulse-keydown="typed" data-pulse-component-id="k">`);
+    const event = new KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true });
+
+    find("input").dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+});
+
+describe("rate limiting", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  function type(input: HTMLInputElement, value: string) {
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  it("debounces until events stop, sending the latest value", () => {
+    render(`<input data-pulse-input="search" data-pulse-input-debounce="300" data-pulse-component-id="s">`);
+    const input = find<HTMLInputElement>("input");
+
+    type(input, "p");
+    vi.advanceTimersByTime(200);
+    type(input, "pu");
+    vi.advanceTimersByTime(299);
+    expect(pulse.sendEvent).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("s", "search", { value: "pu" });
+  });
+
+  it("throttles to one event per period, keeping the last one", () => {
+    render(`<input data-pulse-input="search" data-pulse-input-throttle="300" data-pulse-component-id="s">`);
+    const input = find<HTMLInputElement>("input");
+
+    type(input, "p");
+    type(input, "pu");
+    type(input, "pul");
+    expect(pulse.sendEvent).toHaveBeenCalledExactlyOnceWith("s", "search", { value: "p" });
+
+    vi.advanceTimersByTime(300);
+    expect(pulse.sendEvent).toHaveBeenCalledTimes(2);
+    expect(pulse.sendEvent).toHaveBeenLastCalledWith("s", "search", { value: "pul" });
+
+    vi.advanceTimersByTime(300);
+    expect(pulse.sendEvent).toHaveBeenCalledTimes(2);
+  });
+
+  it("limits each element separately", () => {
+    render(`
+      <input id="a" data-pulse-input="search" data-pulse-input-debounce="300" data-pulse-component-id="s">
+      <input id="b" data-pulse-input="search" data-pulse-input-debounce="300" data-pulse-component-id="s">
+    `);
+
+    type(find<HTMLInputElement>("#a"), "a");
+    type(find<HTMLInputElement>("#b"), "b");
+    vi.advanceTimersByTime(300);
+
+    expect(pulse.sendEvent).toHaveBeenCalledTimes(2);
   });
 });
 
