@@ -14,8 +14,9 @@ class Layout < Pulse::Component
       end
       body do
         nav(class: "navbar") do
-          div(class: "container") do
+          div(class: "container navbar-content") do
             a(href: "/articles", class: "logo") { "CMS Admin" }
+            render Search.new
           end
         end
         main(class: "container", id: "main") do
@@ -42,6 +43,31 @@ class Layout < Pulse::Component
         background: #1a1a2e;
         padding: 1rem 0;
         margin-bottom: 2rem;
+      }
+      .navbar-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .navbar-search { width: min(100%, 18rem); margin-left: auto; }
+      .navbar-search-input {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #d1d5db;
+        border-radius: 7px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        background: #fff;
+        color: #1a1a2e;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .navbar-search-input::placeholder { color: #888; }
+      .navbar-search-input:focus {
+        outline: none;
+        border-color: #4361ee;
+        box-shadow: 0 0 0 3px rgba(67,97,238,0.25);
       }
       .logo {
         color: #fff;

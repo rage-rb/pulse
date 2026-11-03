@@ -1,9 +1,25 @@
 module Pulse::Watching
-  def watch(model, &block)
+  def self.broadcast(model)
     unless model.is_a?(ActiveRecord::Base)
       raise ArgumentError, "should be an Active Record model"
     end
 
+    Rage::PubSub.publish(model.to_global_id(app: "pulse").to_s, topic: model)
+  end
+
+  def watch(object, &)
+    if object.is_a?(ActiveRecord::Base)
+      watch_model(object, &)
+    elsif (object.is_a?(Class) && object <= Pulse::Store) || object.is_a?(Pulse::Store)
+      watch_store(object, &)
+    else
+      raise ArgumentError, "should be an Active Record model or an instance of Pulse::Store"
+    end
+  end
+
+  private
+
+  def watch_model(model, &block)
     pulse_state = Fiber[:__pulse_state]
     return model unless pulse_state
 
@@ -29,7 +45,7 @@ module Pulse::Watching
         end
       end
 
-      cleanup = (Fiber[:__pulse_state][:cleanup] ||= {})
+      cleanup = (pulse_state[:cleanup] ||= {})
       prev_proc = cleanup[self]
 
       cleanup[self] = -> do
@@ -41,15 +57,33 @@ module Pulse::Watching
     wrapped
   end
 
-  def self.broadcast(model)
-    unless model.is_a?(ActiveRecord::Base)
-      raise ArgumentError, "should be an Active Record model"
+  def watch_store(store_or_class, &block)
+    pulse_state = Fiber[:__pulse_state]
+    unless pulse_state
+      return store_or_class.is_a?(Class) ? store_or_class.new : store_or_class
     end
 
-    Rage::PubSub.publish(model.to_global_id(app: "pulse").to_s, topic: model)
-  end
+    store = if store_or_class.is_a?(Class)
+      pulse_state[:stores] ||= {}
+      pulse_state[:stores][store_or_class] ||= store_or_class.new
+    else
+      store_or_class
+    end
 
-  protected
+    __add_subscription do
+      store.__register_component(self, &block)
+
+      cleanup = (pulse_state[:cleanup] ||= {})
+      prev_proc = cleanup[self]
+
+      cleanup[self] = -> do
+        prev_proc&.call
+        store.__unregister_component(self)
+      end
+    end
+
+    store
+  end
 
   def __add_subscription(&block)
     (@__subscriptions ||= []) << block
@@ -61,6 +95,8 @@ module Pulse::Watching
       @__subscriptions = nil
     end
   end
+
+  protected
 
   def __cleanup_subscriptions
     cleanup = Fiber[:__pulse_state][:cleanup]
