@@ -9,7 +9,7 @@ class Article < ApplicationRecord
 
   def broadcast_status_update
     if self.previous_changes.key?("status")
-      Pulse::Tracking.broadcast(self)
+      Pulse.broadcast(self)
     end
   end
 end

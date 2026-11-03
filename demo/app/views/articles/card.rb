@@ -1,6 +1,6 @@
 class Articles::Card < Pulse::Component
   def initialize(article:)
-    @article = track(article) do |article|
+    @article = watch(article) do |article|
       Notification.new(
         message: "The \"#{article.title}\" article status has been updated to '#{article.status}'"
       ).append(target: "main")

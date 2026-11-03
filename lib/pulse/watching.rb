@@ -1,5 +1,5 @@
-module Pulse::Tracking
-  def track(model, &block)
+module Pulse::Watching
+  def watch(model, &block)
     unless model.is_a?(ActiveRecord::Base)
       raise ArgumentError, "should be an Active Record model"
     end

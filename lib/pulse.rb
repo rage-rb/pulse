@@ -11,12 +11,16 @@ module Pulse
     autoload :AutoId, "pulse/phlex/auto_id"
     autoload :EventHandlers, "pulse/phlex/event_handlers"
   end
+
+  def self.broadcast(...)
+    Watching.broadcast(...)
+  end
 end
 
 require_relative "pulse/version"
 require_relative "pulse/scripts"
 require_relative "pulse/marker"
-require_relative "pulse/tracking"
+require_relative "pulse/watching"
 require_relative "pulse/fingerprint"
 require_relative "pulse/event"
 require_relative "pulse/rage_extension"

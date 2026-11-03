@@ -2,7 +2,7 @@
 
 class Pulse::Component < Phlex::HTML
   include Pulse::Scripts
-  include Pulse::Tracking
+  include Pulse::Watching
   include Pulse::Fingerprint
   include Pulse::Marker
 

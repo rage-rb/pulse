@@ -1,6 +1,6 @@
 class Articles::Show < Pulse::Component
   def initialize(article:)
-    @article = track(article)
+    @article = watch(article)
   end
 
   def view_template
