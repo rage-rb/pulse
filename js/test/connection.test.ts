@@ -28,7 +28,7 @@ describe("Connection", () => {
       connection.connect();
 
       expect(FakeWebSocket.instances).toHaveLength(1);
-      expect(FakeWebSocket.last.url).toBe(`ws://${window.location.host}/__pulse/view`);
+      expect(FakeWebSocket.last.url).toBe(`ws://${window.location.host}/__pulse/cable/view`);
     });
 
     it("calls onOpen once the socket opens", () => {

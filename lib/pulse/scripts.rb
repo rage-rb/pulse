@@ -11,7 +11,7 @@ require "digest"
 #
 module Pulse::Scripts
   JAVASCRIPT_PATH = File.expand_path("assets/pulse.min.js", __dir__)
-  MOUNT_PATH = "/__pulse_assets"
+  MOUNT_PATH = "/__pulse/scripts"
 
   HEADERS = {
     "content-type" => "text/javascript; charset=utf-8",
