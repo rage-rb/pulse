@@ -55,9 +55,32 @@ describe("Pulse", () => {
 
       expect(document.getElementById("post_1")).toBeNull();
     });
+
+    it("applies a batch of messages from the server in order", () => {
+      document.body.innerHTML = `<ul id="list"></ul>`;
+      socket.receive([
+        { action: "append", target: "list", html: `<li id="post_1">Old</li>` },
+        { action: "replace", html: `<li id="post_1">New</li>` },
+      ]);
+
+      expect(document.getElementById("list")!.innerHTML).toBe(`<li id="post_1">New</li>`);
+    });
   });
 
   describe("applyAction", () => {
+    it("applies each message in an array in order without treating the array as an action", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      document.body.innerHTML = `<ul id="list"></ul>`;
+
+      pulse.applyAction([
+        { action: "append", target: "list", html: `<li id="post_1">Old</li>` },
+        { action: "replace", html: `<li id="post_1">New</li>` },
+      ]);
+
+      expect(document.getElementById("list")!.innerHTML).toBe(`<li id="post_1">New</li>`);
+      expect(warn).not.toHaveBeenCalled();
+    });
+
     describe("update", () => {
       const html = `<!DOCTYPE html><html><head><title>Comments</title></head><body><h1>Comments</h1></body></html>`;
 

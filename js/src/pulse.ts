@@ -3,6 +3,8 @@ import { currentLocationOptions, currentPath } from "./location";
 import { insertHTML, morphElement, morphPage, removeElement } from "./morph";
 import type { EventData, FormSubmitOptions, ServerMessage } from "./protocol";
 
+type ServerPayload = ServerMessage | ServerMessage[];
+
 declare global {
   interface Window {
     __pulse?: Pulse;
@@ -20,7 +22,7 @@ export class Pulse {
       // Hydrate: render the current page on the server into this connection. Runs on
       // every reconnect too, since server-side component state dies with the socket.
       onOpen: () => this.navigate(window.location.pathname),
-      onMessage: (message) => this.applyAction(message),
+      onMessage: (message) => this.applyAction(message as ServerPayload),
     });
 
     this.connection.connect();
@@ -29,7 +31,12 @@ export class Pulse {
   /**
    * Apply a server -> client message to the page.
    */
-  applyAction(message: ServerMessage) {
+  applyAction(message: ServerPayload) {
+    if (Array.isArray(message)) {
+      message.forEach(m => this.applyAction(m));
+      return;
+    }
+
     switch (message.action) {
       case "update":
         morphPage(message.html);

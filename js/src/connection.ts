@@ -1,9 +1,9 @@
 import { cableUrl } from "./location";
-import type { ClientMessage, ServerMessage } from "./protocol";
+import type { ClientMessage } from "./protocol";
 
 interface ConnectionOptions {
   onOpen: () => void;
-  onMessage: (message: ServerMessage) => void;
+  onMessage: (message: unknown) => void;
 }
 
 const DEFAULT_RECONNECT_DELAY = 1000;
@@ -73,7 +73,7 @@ export class Connection {
   }
 
   private receive(data: unknown) {
-    let message: ServerMessage;
+    let message: unknown;
 
     try {
       message = JSON.parse(String(data));
