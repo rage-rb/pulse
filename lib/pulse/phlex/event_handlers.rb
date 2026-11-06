@@ -14,10 +14,7 @@ module Pulse::Phlex::EventHandlers
       attributes = attributes.merge(on(:keydown, keydown)) if keydown
       attributes = attributes.merge(on(:keyup, keyup)) if keyup
 
-      if (pulse_state = Fiber[:__pulse_state])
-        pulse_state[:interactive_components] ||= ObjectSpace::WeakMap.new
-        pulse_state[:interactive_components][__component_id] = self
-      end
+      Pulse.__state.interactive_components[__component_id] = self if Pulse.__state.live?
 
       super(**attributes, &block)
     end

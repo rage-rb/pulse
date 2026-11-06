@@ -20,8 +20,8 @@ module Pulse::Watching
   private
 
   def watch_model(model, &block)
-    pulse_state = Fiber[:__pulse_state]
-    return model unless pulse_state
+    pulse_state = Pulse.__state
+    return model unless pulse_state.live?
 
     wrapped = SimpleDelegator.new(model)
 
@@ -45,11 +45,7 @@ module Pulse::Watching
         end
       end
 
-      cleanup = (pulse_state[:cleanup] ||= {})
-      prev_proc = cleanup[self]
-
-      cleanup[self] = -> do
-        prev_proc&.call
+      pulse_state.schedule_cleanup(self) do
         Rage::PubSub.unsubscribe(topic: model, subscription_id: self)
       end
     end
@@ -58,14 +54,12 @@ module Pulse::Watching
   end
 
   def watch_store(store_or_class, &block)
-    pulse_state = Fiber[:__pulse_state]
-    unless pulse_state
+    unless Pulse.__state.live?
       return store_or_class.is_a?(Class) ? store_or_class.new : store_or_class
     end
 
     store = if store_or_class.is_a?(Class)
-      pulse_state[:stores] ||= {}
-      pulse_state[:stores][store_or_class] ||= store_or_class.new
+      Pulse.__state.stores[store_or_class] ||= store_or_class.new
     else
       store_or_class
     end
@@ -73,11 +67,7 @@ module Pulse::Watching
     __add_subscription do
       store.__register_component(self, &block)
 
-      cleanup = (pulse_state[:cleanup] ||= {})
-      prev_proc = cleanup[self]
-
-      cleanup[self] = -> do
-        prev_proc&.call
+      Pulse.__state.schedule_cleanup(self) do
         store.__unregister_component(self)
       end
     end
@@ -99,7 +89,6 @@ module Pulse::Watching
   protected
 
   def __cleanup_subscriptions
-    cleanup = Fiber[:__pulse_state][:cleanup]
-    cleanup&.delete(self)&.call
+    Pulse.__state.run_cleanup(self)
   end
 end

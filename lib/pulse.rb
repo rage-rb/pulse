@@ -15,6 +15,10 @@ module Pulse
   def self.broadcast(...)
     Watching.broadcast(...)
   end
+
+  def self.__state
+    Fiber[:__pulse_state] ||= State.new(nil, nil)
+  end
 end
 
 require_relative "pulse/version"
@@ -24,4 +28,5 @@ require_relative "pulse/watching"
 require_relative "pulse/fingerprint"
 require_relative "pulse/event"
 require_relative "pulse/store"
+require_relative "pulse/state"
 require_relative "pulse/rage_extension"

@@ -6,7 +6,7 @@ class Pulse::RageExtension < Rage::Extension
 
     config.renderer :phlex do |component, **props|
       component_instance = component.new(**props)
-      Fiber[:__pulse_state][:root_component] ||= component_instance if Fiber[:__pulse_state]
+      Pulse.__state.root_component ||= component_instance
       headers["content-type"] = "text/html"
       component_instance.call
     end

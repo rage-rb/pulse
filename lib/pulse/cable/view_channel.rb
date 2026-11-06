@@ -2,17 +2,11 @@
 
 class Pulse::Cable::ViewChannel < Rage::Cable::Channel
   def subscribed
-    Fiber[:__pulse_state] = {
-      update: ->(payload) { transmit(payload) },
-      interactive_components: nil,
-      root_component: nil,
-      cleanup: nil,
-      stores: nil
-    }
+    Fiber[:__pulse_state] = Pulse::State.new(env, ->(payload) { transmit(payload) })
   end
 
   def unsubscribed
-    cleanup
+    Pulse.__state.reload
   end
 
   # Single client -> server entrypoint. `type` distinguishes a page navigation from an
@@ -31,7 +25,7 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
   # Dispatch an event to the component.
   def handle_event(data)
     pulse_id, event, event_data = data["id"].to_i, data["event"].to_sym, data["data"]
-    component = Fiber[:__pulse_state][:interactive_components]&.[](pulse_id)
+    component = Pulse.__state.interactive_components[pulse_id]
 
     unless component
       Rage.logger.debug("Couldn't find a component to handle event", component_id: pulse_id, event:)
@@ -43,7 +37,7 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
 
   # Render a root component replacing the whole page.
   def navigate(data)
-    cleanup
+    Pulse.__state.reload
 
     env = build_request(data)
     _, response_headers, response_body = app.call(env)
@@ -76,13 +70,5 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
     end
 
     _env
-  end
-
-  # Unsubscribe all pub/sub listeners, then drop the component registry.
-  def cleanup
-    state = Fiber[:__pulse_state]
-
-    state[:root_component] = state[:stores] = nil
-    state[:cleanup].each_value(&:call).clear if state[:cleanup]
   end
 end

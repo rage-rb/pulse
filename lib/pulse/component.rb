@@ -52,8 +52,6 @@ class Pulse::Component < Phlex::HTML
 
   # Remove this component's element from the client and drop it from the registry.
   def remove
-    return unless Fiber[:__pulse_state]
-
     __cleanup_subscriptions
     @__parent&.__children&.delete(@__identity)
     emit(action: "remove", id: pulse_id)
@@ -70,14 +68,12 @@ class Pulse::Component < Phlex::HTML
   private
 
   def emit(payload)
-    return unless Fiber[:__pulse_state]
-
     @_streamed = true
-    Fiber[:__pulse_state][:update].call(payload)
+    Pulse.__state.write(payload)
   end
 
   def render(component, key: nil, &block)
-    return super(component, &block) unless Fiber[:__pulse_state] && component.is_a?(Pulse::Component)
+    return super(component, &block) unless Pulse.__state.live? && component.is_a?(Pulse::Component)
 
     identity = [component.class, key]
     existing_child = @__children&.dig(identity)
