@@ -12,16 +12,16 @@ class Pulse::State
     !!@write_closure
   end
 
-  def write(payload)
-    @write_closure&.call(payload)
-  end
-
   def interactive_components
     @interactive_components ||= ObjectSpace::WeakMap.new
   end
 
   def stores
     @stores ||= {}
+  end
+
+  def server_events
+    @events ||= Pulse::ServerEvents.new(@write_closure)
   end
 
   def schedule_cleanup(actor, &block)

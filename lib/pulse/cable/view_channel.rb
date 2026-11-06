@@ -32,7 +32,9 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
       return
     end
 
-    component.__handle_event(event, event_data, env:)
+    Pulse.__state.server_events.with_batched_events do
+      component.__handle_event(event, event_data)
+    end
   end
 
   # Render a root component replacing the whole page.

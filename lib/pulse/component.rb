@@ -14,8 +14,7 @@ class Pulse::Component < Phlex::HTML
   # @private
   # @param event [Symbol]
   # @param data [Hash, nil] the event data (input value, key, form fields)
-  # @param env [Hash]
-  def __handle_event(event, data, env:)
+  def __handle_event(event, data)
     unless self.class.__event_handlers.include?(event)
       Rage.logger.debug("Unknown event received", event:)
       return
@@ -37,24 +36,34 @@ class Pulse::Component < Phlex::HTML
 
   # Re-render this component and morph it in place on the client.
   def replace
-    emit(action: "replace", html: render_html)
+    @_streamed = true
+    Pulse.__state.server_events.replace_component(self)
   end
 
   # Render this component and append it to a target container element.
   def append(target:)
-    emit(action: "append", target: target, html: render_html)
+    @_streamed = true
+    Pulse.__state.server_events.append_component(self, target)
   end
 
   # Render this component and prepend it to a target container element.
   def prepend(target:)
-    emit(action: "prepend", target: target, html: render_html)
+    @_streamed = true
+    Pulse.__state.server_events.prepend_component(self, target)
   end
 
   # Remove this component's element from the client and drop it from the registry.
   def remove
+    @_streamed = true
     __cleanup_subscriptions
     @__parent&.__children&.delete(@__identity)
-    emit(action: "remove", id: pulse_id)
+    Pulse.__state.server_events.remove_component(pulse_id)
+  end
+
+  def __pulse_dump
+    # Phlex normally refuses to render an instance more than once
+    @_state = nil
+    call
   end
 
   protected
@@ -63,13 +72,6 @@ class Pulse::Component < Phlex::HTML
 
   def pulse_id
     @pulse_id ||= object_id.to_s
-  end
-
-  private
-
-  def emit(payload)
-    @_streamed = true
-    Pulse.__state.write(payload)
   end
 
   def render(component, key: nil, &block)
@@ -90,7 +92,7 @@ class Pulse::Component < Phlex::HTML
       if block
         # send blocks as distinct patches
         @__pending_pulse_id = true
-        (Fiber[:__pulse_block_html] ||= []) << capture(&block)
+        Pulse.__state.server_events.replace_html(capture(&block))
       end
     else
       # TODO: re-render old component instead?
@@ -98,23 +100,6 @@ class Pulse::Component < Phlex::HTML
       store_child_component(component, identity)
       super(component, &block)
     end
-  end
-
-  def render_html
-    # Phlex normally refuses to render an instance more than once
-    @_state = nil
-
-    html = call
-    block_html = Fiber[:__pulse_block_html]
-
-    if block_html
-      block_html.unshift(html)
-    else
-      html
-    end
-
-  ensure
-    Fiber[:__pulse_block_html] = nil
   end
 
   def around_template
