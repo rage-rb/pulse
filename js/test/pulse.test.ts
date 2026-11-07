@@ -13,6 +13,7 @@ describe("Pulse", () => {
     FakeWebSocket.reset();
     history.replaceState(null, "", "/posts?page=2");
     document.body.innerHTML = "";
+    localStorage.clear();
 
     pulse = new Pulse();
     socket = FakeWebSocket.last;
@@ -23,6 +24,7 @@ describe("Pulse", () => {
     pulse.connection.close();
     vi.unstubAllGlobals();
     history.replaceState(null, "", "/");
+    localStorage.clear();
   });
 
   describe("connecting", () => {
@@ -33,6 +35,33 @@ describe("Pulse", () => {
 
     it("hydrates the current page once connected", () => {
       expect(socket.messages).toEqual([{ type: "navigate", url: "/posts", query: "page=2", hash: "" }]);
+    });
+
+    it("sends the raw local storage snapshot before hydrating the page", () => {
+      pulse.connection.close();
+      localStorage.setItem("application", "untouched");
+      const snapshot = JSON.stringify({ theme: '"dark"', sidebar: "true" });
+      localStorage.setItem("pulseStorage", snapshot);
+
+      pulse = new Pulse();
+      socket = FakeWebSocket.last;
+      socket.open();
+
+      expect(socket.messages).toEqual([
+        { type: "page", local_storage: snapshot },
+        { type: "navigate", url: "/posts", query: "page=2", hash: "" },
+      ]);
+    });
+
+    it("sends a malformed local storage snapshot without parsing it", () => {
+      pulse.connection.close();
+      localStorage.setItem("pulseStorage", "not json");
+
+      pulse = new Pulse();
+      socket = FakeWebSocket.last;
+      socket.open();
+
+      expect(socket.messages[0]).toEqual({ type: "page", local_storage: "not json" });
     });
 
     it("re-hydrates the page it is on after reconnecting", () => {
@@ -46,7 +75,9 @@ describe("Pulse", () => {
         vi.useRealTimers();
       }
 
-      expect(FakeWebSocket.last.messages).toEqual([{ type: "navigate", url: "/comments", query: "", hash: "" }]);
+      expect(FakeWebSocket.last.messages).toEqual([
+        { type: "navigate", url: "/comments", query: "", hash: "" },
+      ]);
     });
 
     it("applies messages from the server", () => {
@@ -79,6 +110,26 @@ describe("Pulse", () => {
 
       expect(document.getElementById("list")!.innerHTML).toBe(`<li id="post_1">New</li>`);
       expect(warn).not.toHaveBeenCalled();
+    });
+
+    it("only applies a page URL message when one is present in a batch", () => {
+      document.body.innerHTML = `<div id="content"></div>`;
+
+      pulse.applyAction([
+        { action: "remove", id: "content" },
+        {
+          action: "page",
+          url: "/comments",
+          history: "replace",
+          local_storage: "snapshot",
+        },
+        { action: "append", target: "content", html: `<p>Ignored</p>` },
+      ]);
+
+      expect(document.getElementById("content")!.innerHTML).toBe("");
+      expect(localStorage.getItem("pulseStorage")).toBe("snapshot");
+      expect(window.location.pathname).toBe("/comments");
+      expect(socket.messages.at(-1)).toEqual({ type: "navigate", url: "/comments", query: "", hash: "" });
     });
 
     describe("update", () => {
@@ -115,6 +166,178 @@ describe("Pulse", () => {
 
         expect(window.location.pathname + window.location.search).toBe("/posts?page=2");
         expect(history.length).toBe(length);
+      });
+    });
+
+    describe("page", () => {
+      it("replaces the URL and navigates", () => {
+        const length = history.length;
+
+        pulse.applyAction({ action: "page", url: "/comments?page=1", history: "replace" });
+
+        expect(window.location.pathname + window.location.search).toBe("/comments?page=1");
+        expect(history.length).toBe(length);
+        expect(socket.messages.at(-1)).toEqual({
+          type: "navigate",
+          url: "/comments",
+          query: "page=1",
+          hash: "",
+        });
+      });
+
+      it("pushes the URL and navigates", () => {
+        const length = history.length;
+
+        pulse.applyAction({ action: "page", url: "/comments?page=1", history: "push" });
+
+        expect(window.location.pathname + window.location.search).toBe("/comments?page=1");
+        expect(history.length).toBe(length + 1);
+        expect(socket.messages.at(-1)).toEqual({
+          type: "navigate",
+          url: "/comments",
+          query: "page=1",
+          hash: "",
+        });
+      });
+
+      it("pushes URL navigations by default", () => {
+        const length = history.length;
+
+        pulse.applyAction({ action: "page", url: "/comments" });
+
+        expect(history.length).toBe(length + 1);
+        expect(socket.messages.at(-1)).toEqual({ type: "navigate", url: "/comments", query: "", hash: "" });
+      });
+
+      it("navigates without updating history when the URL is unchanged", () => {
+        const replaceState = vi.spyOn(history, "replaceState");
+        const pushState = vi.spyOn(history, "pushState");
+
+        pulse.applyAction({ action: "page", url: "/posts?page=2", history: "push" });
+
+        expect(replaceState).not.toHaveBeenCalled();
+        expect(pushState).not.toHaveBeenCalled();
+        expect(socket.messages.at(-1)).toEqual({
+          type: "navigate",
+          url: "/posts",
+          query: "page=2",
+          hash: "",
+        });
+      });
+
+      it("replaces the current query while preserving the path and hash", () => {
+        history.replaceState(null, "", "/posts?page=2#comments");
+        const length = history.length;
+        const sent = socket.sent.length;
+
+        pulse.applyAction({ action: "page", query: "q=some+query&page=1", history: "replace" });
+
+        expect(window.location.pathname + window.location.search + window.location.hash).toBe(
+          "/posts?q=some+query&page=1#comments",
+        );
+        expect(history.length).toBe(length);
+        expect(socket.sent).toHaveLength(sent);
+      });
+
+      it("pushes the current query", () => {
+        const length = history.length;
+
+        pulse.applyAction({ action: "page", query: "page=3", history: "push" });
+
+        expect(window.location.pathname + window.location.search).toBe("/posts?page=3");
+        expect(history.length).toBe(length + 1);
+      });
+
+      it("replaces query history by default", () => {
+        const length = history.length;
+
+        pulse.applyAction({ action: "page", query: "page=3" });
+
+        expect(window.location.pathname + window.location.search).toBe("/posts?page=3");
+        expect(history.length).toBe(length);
+      });
+
+      it("removes the query for an empty query snapshot", () => {
+        pulse.applyAction({ action: "page", query: "", history: "replace" });
+
+        expect(window.location.pathname + window.location.search).toBe("/posts");
+      });
+
+      it("does not update history when the query is unchanged", () => {
+        const replaceState = vi.spyOn(history, "replaceState");
+        const pushState = vi.spyOn(history, "pushState");
+
+        pulse.applyAction({ action: "page", query: "page=2", history: "push" });
+
+        expect(replaceState).not.toHaveBeenCalled();
+        expect(pushState).not.toHaveBeenCalled();
+      });
+
+      it("gives URL navigation precedence over a query patch", () => {
+        pulse.applyAction({
+          action: "page",
+          url: "/comments?sort=latest",
+          query: "ignored=true",
+          history: "replace",
+        });
+
+        expect(window.location.pathname + window.location.search).toBe("/comments?sort=latest");
+        expect(socket.messages.at(-1)).toEqual({
+          type: "navigate",
+          url: "/comments",
+          query: "sort=latest",
+          hash: "",
+        });
+      });
+
+      it("replaces local storage with the server snapshot", () => {
+        localStorage.setItem("application", "untouched");
+        localStorage.setItem("pulseStorage", JSON.stringify({ stale: "value", theme: '"light"' }));
+        const snapshot = JSON.stringify({ theme: '"dark"', sidebar: "true" });
+
+        pulse.applyAction({
+          action: "page",
+          local_storage: snapshot,
+        });
+
+        expect(localStorage.getItem("pulseStorage")).toBe(snapshot);
+        expect(localStorage.getItem("application")).toBe("untouched");
+      });
+
+      it("stores the server snapshot without parsing it", () => {
+        localStorage.setItem("application", "untouched");
+
+        pulse.applyAction({ action: "page", local_storage: "not json" });
+
+        expect(localStorage.getItem("pulseStorage")).toBe("not json");
+        expect(localStorage.getItem("application")).toBe("untouched");
+      });
+
+      it("leaves local storage alone when no snapshot is present", () => {
+        const stored = JSON.stringify({ theme: '"dark"' });
+        localStorage.setItem("pulseStorage", stored);
+
+        pulse.applyAction({ action: "page", url: "/comments", history: "replace" });
+
+        expect(localStorage.getItem("pulseStorage")).toBe(stored);
+      });
+
+      it("applies local storage before navigating", () => {
+        localStorage.setItem("pulseStorage", JSON.stringify({ theme: '"light"' }));
+        const snapshot = JSON.stringify({ theme: '"dark"' });
+        const navigate = vi.spyOn(pulse, "navigate").mockImplementation(() => {
+          expect(localStorage.getItem("pulseStorage")).toBe(snapshot);
+        });
+
+        pulse.applyAction({
+          action: "page",
+          url: "/comments",
+          history: "replace",
+          local_storage: snapshot,
+        });
+
+        expect(window.location.pathname).toBe("/comments");
+        expect(navigate).toHaveBeenCalledOnce();
       });
     });
 

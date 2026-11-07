@@ -17,6 +17,8 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
       navigate(data)
     when "event"
       handle_event(data)
+    when "page"
+      update_page(data)
     end
   end
 
@@ -48,6 +50,12 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
       transmit(action: "navigate", url: location_url)
     else
       transmit(action: "update", html: response_body[0])
+    end
+  end
+
+  def update_page(data)
+    if local_storage_snapshot = data["local_storage"]
+      Pulse.__state.local_storage_snapshot = local_storage_snapshot
     end
   end
 

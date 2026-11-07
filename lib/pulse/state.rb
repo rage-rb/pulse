@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Pulse::State
-  attr_accessor :root_component
+  attr_accessor :root_component, :local_storage_snapshot
 
   def initialize(env, write_closure)
     @env = env
@@ -22,6 +22,10 @@ class Pulse::State
 
   def server_events
     @events ||= Pulse::ServerEvents.new(@write_closure)
+  end
+
+  def page
+    @page ||= Pulse::Page.new(@env, @local_storage_snapshot)
   end
 
   def schedule_cleanup(actor, &block)

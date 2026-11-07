@@ -10,7 +10,14 @@ export type ServerMessage =
   | { action: "append"; target: string; html: string }
   | { action: "prepend"; target: string; html: string }
   | { action: "remove"; id: string }
-  | { action: "navigate"; url: string };
+  | { action: "navigate"; url: string }
+  | {
+      action: "page";
+      url?: string;
+      query?: string;
+      history?: "push" | "replace";
+      local_storage?: string;
+    };
 
 export interface FormSubmitOptions {
   method?: string;
@@ -32,4 +39,5 @@ export interface EventData {
 // "event" dispatches a server-side event handler on a specific component.
 export type ClientMessage =
   | ({ type: "navigate"; url: string } & FormSubmitOptions)
-  | { type: "event"; id: string; event: string; data?: EventData };
+  | { type: "event"; id: string; event: string; data?: EventData }
+  | { type: "page"; local_storage?: string };

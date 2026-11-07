@@ -35,6 +35,10 @@ class Pulse::ServerEvents
     emit(:remove, component_id) { { action: "remove", id: component_id } }
   end
 
+  def update_page(page)
+    emit(:page) { { action: "page", **page.__pulse_dump } }
+  end
+
   private
 
   def replace_events
@@ -68,6 +72,10 @@ class Pulse::ServerEvents
       prepend_events
     when :remove
       remove_events
+    when :page
+      # we only need the latest representation of `page`, so queue it
+      @page_event = block
+      return
     end
 
     unless registry.has_key?(event_id)
@@ -77,6 +85,7 @@ class Pulse::ServerEvents
   end
 
   def emit_batched_events
+    @batch << @page_event.call if @page_event
     @write_closure&.call(@batch)
   ensure
     @batch.clear
@@ -84,5 +93,6 @@ class Pulse::ServerEvents
     @append_events&.clear
     @prepend_events&.clear
     @remove_events&.clear
+    @page_event = nil
   end
 end

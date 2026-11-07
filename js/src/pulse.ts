@@ -5,6 +5,8 @@ import type { EventData, FormSubmitOptions, ServerMessage } from "./protocol";
 
 type ServerPayload = ServerMessage | ServerMessage[];
 
+const LOCAL_STORAGE_KEY = "pulseStorage";
+
 declare global {
   interface Window {
     __pulse?: Pulse;
@@ -21,7 +23,13 @@ export class Pulse {
     this.connection = new Connection({
       // Hydrate: render the current page on the server into this connection. Runs on
       // every reconnect too, since server-side component state dies with the socket.
-      onOpen: () => this.navigate(window.location.pathname),
+      onOpen: () => {
+        const pulseStorage = localStorageSnapshot();
+        if (pulseStorage !== undefined) {
+          this.connection.send({ type: "page", local_storage: pulseStorage });
+        }
+        this.navigate(window.location.pathname);
+      },
       onMessage: (message) => this.applyAction(message as ServerPayload),
     });
 
@@ -33,7 +41,13 @@ export class Pulse {
    */
   applyAction(message: ServerPayload) {
     if (Array.isArray(message)) {
-      message.forEach(m => this.applyAction(m));
+      const navigation = message.find(item => item.action === "page" && item.url !== undefined);
+
+      if (navigation) {
+        this.applyAction(navigation);
+      } else {
+        message.forEach(item => this.applyAction(item));
+      }
       return;
     }
 
@@ -64,6 +78,19 @@ export class Pulse {
         // A server-side redirect: follow it like a link.
         this.visit(message.url);
         break;
+      case "page":
+        if (message.local_storage !== undefined) {
+          replaceLocalStorage(message.local_storage);
+        }
+
+        if (message.url !== undefined) {
+          this.visit(message.url, message.history ?? "push");
+        } else if (message.query !== undefined) {
+          const target = new URL(window.location.href);
+          target.search = message.query;
+          updateHistory(target.href, message.history ?? "replace");
+        }
+        break;
       default:
         console.warn("[pulse] Ignoring unknown action", (message as { action?: unknown }).action);
     }
@@ -77,20 +104,22 @@ export class Pulse {
   }
 
   /**
-   * Go to `url` as if following a link: push it into history and render it over the
+   * Go to `url` as if following a link: update history and render it over the
    * socket. Cross-origin URLs fall back to a full page load.
    */
-  visit(url: string) {
+  visit(url: string, historyAction: "push" | "replace" = "push") {
     const target = new URL(url, window.location.href);
 
     if (target.origin !== window.location.origin) {
-      window.location.assign(target.href);
+      if (historyAction === "replace") {
+        window.location.replace(target.href);
+      } else {
+        window.location.assign(target.href);
+      }
       return;
     }
 
-    if (target.href !== window.location.href) {
-      history.pushState(null, "", target.href);
-    }
+    updateHistory(target.href, historyAction);
     this.navigate(target.pathname, {
       query: target.search.slice(1),
       hash: target.hash,
@@ -102,5 +131,26 @@ export class Pulse {
    */
   sendEvent(id: string, event: string, data?: EventData) {
     this.connection.send({ type: "event", id, event, data });
+  }
+}
+
+function localStorageSnapshot() {
+  const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+  if (stored === null) return undefined;
+
+  return stored;
+}
+
+function replaceLocalStorage(snapshot: string) {
+  localStorage.setItem(LOCAL_STORAGE_KEY, snapshot);
+}
+
+function updateHistory(url: string, action: "push" | "replace") {
+  if (url === window.location.href) return;
+
+  if (action === "push") {
+    history.pushState(null, "", url);
+  } else {
+    history.replaceState(null, "", url);
   }
 }

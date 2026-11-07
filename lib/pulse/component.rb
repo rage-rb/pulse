@@ -60,6 +60,10 @@ class Pulse::Component < Phlex::HTML
     Pulse.__state.server_events.remove_component(pulse_id)
   end
 
+  def page
+    Pulse.__state.page
+  end
+
   def __pulse_dump
     # Phlex normally refuses to render an instance more than once
     @_state = nil
