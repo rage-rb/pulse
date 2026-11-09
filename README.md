@@ -2,7 +2,8 @@
 
 Stateful, reactive, server-rendered views for Ruby, built with [Phlex](https://github.com/yippee-fun/phlex) and [Rage](https://github.com/rage-rb/rage).
 
-**Pulse is in active development. Its API may change.**
+> [!NOTE]
+> **Pulse is in active development. Its API may change.**
 
 Pulse keeps Phlex component instances alive for the lifetime of a WebSocket connection. Browser events call ordinary Ruby methods, transient UI state stays in the component, and updates are rendered as HTML and morphed into the page.
 
