@@ -12,6 +12,8 @@ class Pulse::Store
           block&.call
           component.replace
         end
+
+        value
       end
     end
   end
