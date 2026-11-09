@@ -9,7 +9,7 @@ class Pulse::Store
         attributes[name] = value
 
         components.each do |component, block|
-          block&.call
+          block&.call(self)
           component.replace
         end
 
