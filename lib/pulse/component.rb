@@ -99,9 +99,12 @@ class Pulse::Component < Phlex::HTML
         Pulse.__state.server_events.replace_html(capture(&block))
       end
     else
-      # TODO: re-render old component instead?
       existing_child.__cleanup_subscriptions
       store_child_component(component, identity)
+
+      component.__children = existing_child.__children
+      existing_child.__children = nil
+
       super(component, &block)
     end
   end
