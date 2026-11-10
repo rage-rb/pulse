@@ -2,7 +2,7 @@
 
 class Pulse::Cable::ViewChannel < Rage::Cable::Channel
   def subscribed
-    Fiber[:__pulse_state] = Pulse::State.new(env, ->(payload) { transmit(payload) })
+    Fiber[:__pulse_state] = Pulse::State.new(->(payload) { transmit(payload) })
   end
 
   def unsubscribed
@@ -14,6 +14,7 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
   def receive(data)
     case data["type"]
     when "navigate"
+      update_page(data)
       navigate(data)
     when "event"
       handle_event(data)
@@ -54,8 +55,18 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
   end
 
   def update_page(data)
+    state = Pulse.__state
+
     if local_storage_snapshot = data["local_storage"]
-      Pulse.__state.local_storage_snapshot = local_storage_snapshot
+      state.local_storage_snapshot = local_storage_snapshot
+    end
+
+    if query_snapshot = data["query"]
+      state.query_snapshot = query_snapshot
+    end
+
+    if url = data["url"]
+      state.url = url
     end
   end
 

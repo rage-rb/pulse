@@ -17,7 +17,7 @@ module Pulse
   end
 
   def self.__state
-    Fiber[:__pulse_state] ||= State.new(nil, nil)
+    Fiber[:__pulse_state] ||= State.new(nil)
   end
 end
 

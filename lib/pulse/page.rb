@@ -1,32 +1,31 @@
 # frozen_string_literal: true
 
 class Pulse::Page
-  def initialize(env, local_storage_snapshot)
-    @env = env
-    @local_storage_snapshot = local_storage_snapshot
+  def initialize(state)
+    @state = state
   end
 
   def path
-    @env["PATH_INFO"]
+    @state.url
   end
 
   def navigate(url)
-    @url = url
-    Pulse.__state.server_events.update_page(self)
+    @navigate_url = url
+    state.server_events.update_page(self)
   end
 
   def query
-    @query ||= Query.new(self, @env["QUERY_STRING"])
+    @query ||= Query.new(self, @state.query_snapshot)
   end
 
   def local_storage
-    @local_storage ||= LocalStorage.new(self, @local_storage_snapshot)
+    @local_storage ||= LocalStorage.new(self, @state.local_storage_snapshot)
   end
 
   def url
-    query_string = @env["QUERY_STRING"]
+    query_string = @state.query_snapshot
 
-    if query_string.empty?
+    if query_string.nil? || query_string.empty?
       path
     else
       "#{path}?#{query_string}"
@@ -36,9 +35,9 @@ class Pulse::Page
   def __pulse_dump
     data = {}
 
-    if @url
-      data[:url] = @url
-      @url = nil
+    if @navigate_url
+      data[:url] = @navigate_url
+      @navigate_url = nil
     end
 
     if @query&.changed
@@ -102,10 +101,13 @@ class Pulse::Page
 
   class Query < HashAccess
     def initialize(page, query_string)
-      super(
-        page,
-        query_string == "" ? {} : Iodine::Rack::Utils.parse_nested_query(query_string)
-      )
+      data = if query_string.nil? || query_string.empty?
+        {}
+      else
+        Iodine::Rack::Utils.parse_nested_query(query_string)
+      end
+
+      super(page, data)
     end
 
     def __pulse_dump
