@@ -113,17 +113,6 @@ class Articles::Index < Pulse::Component
 end
 ```
 
-## How it works
-
-1. A normal HTTP request is routed to a Rage controller and rendered with Phlex.
-2. The Pulse client opens one WebSocket for the browser tab.
-3. Pulse renders the current route again inside the connection's fiber, creating the live component tree.
-4. Component events are dispatched to methods on the retained instances.
-5. The changed component renders HTML, which the client morphs into the existing DOM.
-6. Links, forms, redirects, and history navigation are routed through the same controllers over the connection.
-
-Phlex supplies the view objects and rendering syntax. Rage supplies the connection handling and fiber-based concurrency. Pulse connects them with event dispatch, component identity, subscriptions, and HTML updates.
-
 ## Components and events
 
 Event handlers are public methods defined on a `Pulse::Component`. After a handler returns, Pulse automatically replaces that component unless the handler performed another targeted update itself.
