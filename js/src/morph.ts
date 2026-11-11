@@ -45,7 +45,7 @@ export function morphPage(html: string) {
  * located by the id of the root element in `html`. Returns false if nothing matched.
  */
 export function morphElement(html: string) {
-  const next = parseFragment(html).firstElementChild;
+  const next = parseElement(html);
   if (!next?.id) return false;
 
   const current = document.getElementById(next.id);
@@ -74,10 +74,18 @@ export function removeElement(id: string) {
   return true;
 }
 
-function parseFragment(html: string) {
+function parseElement(html: string) {
+  const source = html.trim();
+
+  // The fragment parser discards a top-level body tag and its attributes.
+  // Layout components re-render as body elements, so parse those as documents.
+  if (/^<body(?:\s|>)/i.test(source)) {
+    return new DOMParser().parseFromString(source, "text/html").body;
+  }
+
   const template = document.createElement("template");
-  template.innerHTML = html.trim();
-  return template.content;
+  template.innerHTML = source;
+  return template.content.firstElementChild;
 }
 
 /**
@@ -94,7 +102,9 @@ function preparePulseStubs(currentRoot: Element, nextRoot: Element) {
   for (const candidate of candidates) {
     if (!candidate.hasAttribute(PULSE_STUB_ATTRIBUTE)) continue;
 
-    const live = findLiveElement(currentRoot, candidate.id);
+    const live = findLiveStubTarget(currentRoot, preparedRoot, candidate);
+    if (live && !candidate.id) candidate.id = live.id;
+
     const stub = live ? retag(candidate, live) : candidate;
     if (candidate === preparedRoot) preparedRoot = stub;
 
@@ -133,6 +143,41 @@ function findLiveElement(root: Element, id: string) {
 
   const element = document.getElementById(id);
   return element && root.contains(element) ? element : null;
+}
+
+/**
+ * Resolve keyed stubs by id and anonymous yield stubs by their element position.
+ * Positional targets must still have an id so Morphlex can pair the two nodes.
+ */
+function findLiveStubTarget(currentRoot: Element, nextRoot: Element, stub: Element) {
+  if (stub.id) return findLiveElement(currentRoot, stub.id);
+
+  const element = findLiveElementAtPosition(currentRoot, nextRoot, stub);
+  return element?.id ? element : null;
+}
+
+/**
+ * Find the live element occupying the same slot in the current tree. An id-bearing
+ * ancestor is used as an anchor when available; otherwise the lookup follows
+ * element-child positions from the component root, ignoring whitespace nodes.
+ */
+function findLiveElementAtPosition(
+  currentRoot: Element,
+  nextRoot: Element,
+  nextElement: Element,
+): Element | null {
+  if (nextElement === nextRoot) return currentRoot;
+
+  const nextParent = nextElement.parentElement;
+  if (!nextParent) return null;
+
+  const currentParent = nextParent.id
+    ? findLiveElement(currentRoot, nextParent.id)
+    : findLiveElementAtPosition(currentRoot, nextRoot, nextParent);
+  if (!currentParent) return null;
+
+  const position = [...nextParent.children].indexOf(nextElement);
+  return position < 0 ? null : currentParent.children.item(position);
 }
 
 function isPulseStub(node: Node): node is Element {

@@ -9,6 +9,7 @@ module Pulse
 
   module Phlex
     autoload :AutoId, "pulse/phlex/auto_id"
+    autoload :MetaElements, "pulse/phlex/meta_elements"
     autoload :EventHandlers, "pulse/phlex/event_handlers"
   end
 

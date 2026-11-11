@@ -7,6 +7,9 @@ function page(body: string, title = "Pulse") {
 
 beforeEach(() => {
   document.title = "";
+  for (const { name } of [...document.body.attributes]) {
+    document.body.removeAttribute(name);
+  }
   document.body.innerHTML = "";
 });
 
@@ -135,6 +138,62 @@ describe("morphElement", () => {
     expect(item1.outerHTML).toBe(`<span id="item_1" class="changed">New</span>`);
     expect(document.getElementById("item_2")).toBe(item2);
     expect(input.value).toBe("typed");
+  });
+
+  it("preserves a yielded root represented by an anonymous stub", () => {
+    document.body.id = "layout";
+    document.body.className = "theme-light";
+    document.body.innerHTML = `
+      <nav>Navigation</nav>
+      <main id="main">
+        <section id="page" class="live"><input value="original"></section>
+      </main>
+    `;
+    const body = document.body;
+    const page = document.getElementById("page")!;
+    const input = page.querySelector("input")!;
+    input.value = "typed";
+
+    expect(morphElement(`
+      <body id="layout" class="theme-dark">
+        <nav>Navigation</nav>
+        <main id="main"><div data-pulse-stub></div></main>
+      </body>
+    `)).toBe(true);
+
+    expect(document.body).toBe(body);
+    expect(document.body.className).toBe("theme-dark");
+    expect(document.getElementById("page")).toBe(page);
+    expect(page.outerHTML).toBe(`<section id="page" class="live"><input value="original"></section>`);
+    expect(input.value).toBe("typed");
+    expect(document.querySelector("[data-pulse-stub]")).toBeNull();
+  });
+
+  it("resolves an anonymous stub through unkeyed ancestor positions", () => {
+    document.body.innerHTML = `
+      <div id="layout">
+        <main><section class="slot"><article id="page">Content</article></section></main>
+      </div>
+    `;
+    const page = document.getElementById("page")!;
+
+    morphElement(`
+      <div id="layout">
+        <main><section class="slot"><div data-pulse-stub></div></section></main>
+      </div>
+    `);
+
+    expect(document.getElementById("page")).toBe(page);
+    expect(page.outerHTML).toBe(`<article id="page">Content</article>`);
+  });
+
+  it("does not preserve an anonymous stub when its positional target has no id", () => {
+    document.body.innerHTML = `<div id="layout"><main><span>Unkeyed</span></main></div>`;
+
+    morphElement(`<div id="layout"><main><div data-pulse-stub></div></main></div>`);
+
+    expect(document.querySelector("#layout main")!.children).toHaveLength(0);
+    expect(document.querySelector("[data-pulse-stub]")).toBeNull();
   });
 
   it("treats an empty root stub as a no-op even when its tag differs", () => {

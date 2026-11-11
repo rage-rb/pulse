@@ -67,7 +67,10 @@ class Pulse::Component < Phlex::HTML
   def __pulse_dump
     # Phlex normally refuses to render an instance more than once
     @_state = nil
-    call
+    @__rerender = true
+    call { div(data_pulse_stub: true) }
+  ensure
+    @__rerender = false
   end
 
   protected

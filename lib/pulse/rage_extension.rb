@@ -14,6 +14,7 @@ class Pulse::RageExtension < Rage::Extension
 
   initializer do
     Pulse::Component.prepend(Pulse::Phlex::AutoId)
+    Pulse::Component.prepend(Pulse::Phlex::MetaElements)
     Pulse::Component.prepend(Pulse::Phlex::EventHandlers)
   end
 
