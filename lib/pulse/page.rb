@@ -56,13 +56,14 @@ class Pulse::Page
   class HashAccess
     attr_accessor :changed
 
-    def initialize(page, data)
+    def initialize(page, data, root: self)
       @page = page
       @data = data
+      @root = root
     end
 
     def [](key)
-      @data[key]
+      process_nested_value(@data[key])
     end
 
     def key?(key)
@@ -72,7 +73,7 @@ class Pulse::Page
     alias_method :has_key?, :key?
 
     def fetch(...)
-      @data.fetch(...)
+      process_nested_value(@data.fetch(...))
     end
 
     def delete(...)
@@ -91,10 +92,24 @@ class Pulse::Page
       @data
     end
 
+    def inspect
+      @data.inspect
+    end
+
     private
 
+    def process_nested_value(value)
+      if value.is_a?(Hash)
+        HashAccess.new(@page, value, root: @root)
+      elsif value.is_a?(Array)
+        value.map { |v| process_nested_value(v) }
+      else
+        value
+      end
+    end
+
     def trigger_change
-      @changed = true
+      @root.changed = true
       Pulse.__state.server_events.update_page(@page)
     end
   end
