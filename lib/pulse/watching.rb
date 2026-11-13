@@ -30,11 +30,7 @@ module Pulse::Watching
         Fiber.schedule do
           Fiber[:__pulse_state] = pulse_state
 
-          new_model = begin
-            GlobalID::Locator.locate(gid)
-          rescue ActiveRecord::RecordNotFound
-          end
-
+          new_model = Pulse::ModelCache.fetch(gid)
           wrapped.__setobj__(new_model)
           block&.call(new_model)
           new_model.nil? ? remove : replace
