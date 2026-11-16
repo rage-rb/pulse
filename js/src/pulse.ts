@@ -66,10 +66,10 @@ export class Pulse {
         }
         break;
       case "append":
-        insertHTML(message.target, "beforeend", message.html);
+        insertHTML(message.selector, "beforeend", message.html);
         break;
       case "prepend":
-        insertHTML(message.target, "afterbegin", message.html);
+        insertHTML(message.selector, "afterbegin", message.html);
         break;
       case "remove":
         removeElement(message.id);

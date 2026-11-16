@@ -324,10 +324,10 @@ page.navigate("/articles")
 An event normally ends with an automatic `replace`, but components can choose another operation:
 
 ```ruby
-replace                          # re-render this component in place
-append(target: "notifications")  # add to the end of #notifications
-prepend(target: "notifications") # add to the start of #notifications
-remove                           # remove this component from the page
+replace                         # re-render this component in place
+append(to: "#notifications")    # add to the end of the matching element
+prepend(to: "#notifications")   # add to the start of the matching element
+remove                          # remove this component from the page
 ```
 
 ## Demo

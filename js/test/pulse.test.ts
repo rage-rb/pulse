@@ -90,7 +90,7 @@ describe("Pulse", () => {
     it("applies a batch of messages from the server in order", () => {
       document.body.innerHTML = `<ul id="list"></ul>`;
       socket.receive([
-        { action: "append", target: "list", html: `<li id="post_1">Old</li>` },
+        { action: "append", selector: "#list", html: `<li id="post_1">Old</li>` },
         { action: "replace", html: `<li id="post_1">New</li>` },
       ]);
 
@@ -104,7 +104,7 @@ describe("Pulse", () => {
       document.body.innerHTML = `<ul id="list"></ul>`;
 
       pulse.applyAction([
-        { action: "append", target: "list", html: `<li id="post_1">Old</li>` },
+        { action: "append", selector: "#list", html: `<li id="post_1">Old</li>` },
         { action: "replace", html: `<li id="post_1">New</li>` },
       ]);
 
@@ -123,7 +123,7 @@ describe("Pulse", () => {
           history: "replace",
           local_storage: "snapshot",
         },
-        { action: "append", target: "content", html: `<p>Ignored</p>` },
+        { action: "append", selector: "#content", html: `<p>Ignored</p>` },
       ]);
 
       expect(document.getElementById("content")!.innerHTML).toBe("");
@@ -350,19 +350,19 @@ describe("Pulse", () => {
     });
 
     it("appends to a target", () => {
-      document.body.innerHTML = `<ul id="list"><li>a</li></ul>`;
+      document.body.innerHTML = `<ul class="list"><li>a</li></ul>`;
 
-      pulse.applyAction({ action: "append", target: "list", html: `<li>b</li>` });
+      pulse.applyAction({ action: "append", selector: ".list", html: `<li>b</li>` });
 
-      expect(document.getElementById("list")!.innerHTML).toBe(`<li>a</li><li>b</li>`);
+      expect(document.querySelector(".list")!.innerHTML).toBe(`<li>a</li><li>b</li>`);
     });
 
     it("prepends to a target", () => {
-      document.body.innerHTML = `<ul id="list"><li>b</li></ul>`;
+      document.body.innerHTML = `<ul data-list><li>b</li></ul>`;
 
-      pulse.applyAction({ action: "prepend", target: "list", html: `<li>a</li>` });
+      pulse.applyAction({ action: "prepend", selector: "[data-list]", html: `<li>a</li>` });
 
-      expect(document.getElementById("list")!.innerHTML).toBe(`<li>a</li><li>b</li>`);
+      expect(document.querySelector("[data-list]")!.innerHTML).toBe(`<li>a</li><li>b</li>`);
     });
 
     it("removes an element", () => {

@@ -7,8 +7,8 @@
 export type ServerMessage =
   | { action: "update"; html: string; url?: string }
   | { action: "replace"; html: string }
-  | { action: "append"; target: string; html: string }
-  | { action: "prepend"; target: string; html: string }
+  | { action: "append"; selector: string; html: string }
+  | { action: "prepend"; selector: string; html: string }
   | { action: "remove"; id: string }
   | { action: "navigate"; url: string }
   | {

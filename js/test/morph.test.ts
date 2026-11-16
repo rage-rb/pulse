@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { insertHTML, morphElement, morphPage, removeElement } from "../src/morph";
 
 function page(body: string, title = "Pulse") {
@@ -282,23 +282,53 @@ describe("insertHTML", () => {
   });
 
   it("appends to the target", () => {
-    expect(insertHTML("list", "beforeend", `<li>c</li>`)).toBe(true);
+    expect(insertHTML("#list", "beforeend", `<li>c</li>`)).toBe(true);
     expect(document.getElementById("list")!.innerHTML).toBe(`<li>b</li><li>c</li>`);
   });
 
   it("prepends to the target", () => {
-    expect(insertHTML("list", "afterbegin", `<li>a</li>`)).toBe(true);
+    expect(insertHTML("ul:first-child", "afterbegin", `<li>a</li>`)).toBe(true);
     expect(document.getElementById("list")!.innerHTML).toBe(`<li>a</li><li>b</li>`);
   });
 
   it("inserts multiple elements", () => {
-    insertHTML("list", "beforeend", `<li>c</li><li>d</li>`);
+    insertHTML("#list", "beforeend", `<li>c</li><li>d</li>`);
     expect(document.getElementById("list")!.children).toHaveLength(3);
   });
 
   it("returns false when the target is missing", () => {
-    expect(insertHTML("missing", "beforeend", `<li>c</li>`)).toBe(false);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(insertHTML(".missing", "beforeend", `<li>c</li>`)).toBe(false);
     expect(document.body.innerHTML).toBe(`<ul id="list"><li>b</li></ul>`);
+    expect(warn).toHaveBeenCalledWith(
+      "[pulse] Target selector must match exactly one element",
+      ".missing",
+      0,
+    );
+  });
+
+  it("returns false when the selector matches multiple targets", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    document.body.innerHTML = `<ul class="list"><li>a</li></ul><ul class="list"><li>b</li></ul>`;
+
+    expect(insertHTML(".list", "beforeend", `<li>c</li>`)).toBe(false);
+    expect(document.body.innerHTML).toBe(
+      `<ul class="list"><li>a</li></ul><ul class="list"><li>b</li></ul>`,
+    );
+    expect(warn).toHaveBeenCalledWith(
+      "[pulse] Target selector must match exactly one element",
+      ".list",
+      2,
+    );
+  });
+
+  it("returns false when the selector is invalid", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(insertHTML("[", "beforeend", `<li>c</li>`)).toBe(false);
+    expect(document.body.innerHTML).toBe(`<ul id="list"><li>b</li></ul>`);
+    expect(warn).toHaveBeenCalledWith("[pulse] Invalid target selector", "[");
   });
 });
 

@@ -56,13 +56,24 @@ export function morphElement(html: string) {
 }
 
 /**
- * Insert `html` at the start or end of the element with id `targetId`.
+ * Insert `html` at the start or end of the single element matching `selector`.
  */
-export function insertHTML(targetId: string, position: InsertPosition, html: string) {
-  const target = document.getElementById(targetId);
-  if (!target) return false;
+export function insertHTML(selector: string, position: InsertPosition, html: string) {
+  let targets: NodeListOf<Element>;
 
-  target.insertAdjacentHTML(position, html);
+  try {
+    targets = document.querySelectorAll(selector);
+  } catch {
+    console.warn("[pulse] Invalid target selector", selector);
+    return false;
+  }
+
+  if (targets.length !== 1) {
+    console.warn("[pulse] Target selector must match exactly one element", selector, targets.length);
+    return false;
+  }
+
+  targets[0].insertAdjacentHTML(position, html);
   return true;
 }
 

@@ -40,16 +40,16 @@ class Pulse::Component < Phlex::HTML
     Pulse.__state.server_events.replace_component(self)
   end
 
-  # Render this component and append it to a target container element.
-  def append(target:)
+  # Render this component and append it to the element matching a CSS selector.
+  def append(to:)
     @_streamed = true
-    Pulse.__state.server_events.append_component(self, target)
+    Pulse.__state.server_events.append_component(self, to)
   end
 
-  # Render this component and prepend it to a target container element.
-  def prepend(target:)
+  # Render this component and prepend it to the element matching a CSS selector.
+  def prepend(to:)
     @_streamed = true
-    Pulse.__state.server_events.prepend_component(self, target)
+    Pulse.__state.server_events.prepend_component(self, to)
   end
 
   # Remove this component's element from the client and drop it from the registry.

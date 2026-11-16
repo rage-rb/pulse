@@ -3,7 +3,7 @@ class Articles::Card < Pulse::Component
     @article = watch(article) do |article|
       Notification.new(
         message: "The \"#{article.title}\" article status has been updated to '#{article.status}'"
-      ).append(target: "main")
+      ).append(to: "main")
     end
 
     @expanded = false

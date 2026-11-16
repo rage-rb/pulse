@@ -23,12 +23,12 @@ class Pulse::ServerEvents
     emit(:replace, @html_seq.next) { { action: "replace", html: } }
   end
 
-  def append_component(component, target)
-    emit(:append, component) { { action: "append", target:, html: component.__pulse_dump } }
+  def append_component(component, selector)
+    emit(:append, component) { { action: "append", selector:, html: component.__pulse_dump } }
   end
 
-  def prepend_component(component, target)
-    emit(:prepend, component) { { action: "prepend", target:, html: component.__pulse_dump } }
+  def prepend_component(component, selector)
+    emit(:prepend, component) { { action: "prepend", selector:, html: component.__pulse_dump } }
   end
 
   def remove_component(component_id)
