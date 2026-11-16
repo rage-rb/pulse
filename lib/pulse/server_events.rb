@@ -15,7 +15,7 @@ class Pulse::ServerEvents
   end
 
   def replace_component(component)
-    emit(:replace, component) { { action: "replace", html: component.__pulse_dump } }
+    emit(:replace, component) { { action: "replace", html: component.__pulse_dump(true) } }
   end
 
   def replace_html(html)
