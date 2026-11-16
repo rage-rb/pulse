@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "morphlex": "1.4.0"
+    "morphlex": "2.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
