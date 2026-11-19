@@ -77,6 +77,10 @@ class Pulse::Component < Phlex::HTML
 
   attr_accessor :__parent, :__children, :__cached_fingerprint, :__identity
 
+  class << self
+    attr_accessor :__root_validated
+  end
+
   def pulse_id
     @pulse_id ||= object_id.to_s
   end
@@ -113,12 +117,20 @@ class Pulse::Component < Phlex::HTML
   end
 
   def around_template
+    validate_root_element
     @__pending_pulse_id = true
     super
     __activate_subscriptions
     cleanup_child_components
   ensure
     @__cached_fingerprint = fingerprint
+  end
+
+  def validate_root_element
+    if (Rage.env.development? || Rage.env.test?) && !self.class.__root_validated
+      Pulse::ComponentRootValidator.validate!(self.class)
+      self.class.__root_validated = true
+    end
   end
 
   def store_child_component(component, identity)

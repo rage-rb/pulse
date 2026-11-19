@@ -2,6 +2,8 @@
 
 module Pulse
   autoload :Component, "pulse/component"
+  autoload :ComponentRootValidator, "pulse/component_root_validator"
+  autoload :InvalidComponentRootError, "pulse/invalid_component_root_error"
 
   module Cable
     autoload :ViewChannel, "pulse/cable/view_channel"

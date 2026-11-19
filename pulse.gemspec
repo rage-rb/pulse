@@ -32,6 +32,8 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "rage-rb", "~> 1.26"
   spec.add_dependency "globalid", "~> 1.4"
+  spec.add_dependency "phlex", "~> 2.4"
+  spec.add_dependency "prism", "~> 1.0"
+  spec.add_dependency "rage-rb", "~> 1.29"
 end
