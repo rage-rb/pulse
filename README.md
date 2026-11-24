@@ -52,6 +52,16 @@ No database column, query parameter, JSON API, or hand-written JavaScript is nee
 
 Pulse preserves standard Phlex syntax. Event handlers are element attributes such as `click: :toggle`, and `key:` is available when rendering nested components whose identity must survive a parent re-render.
 
+## Installation
+
+Create a new Rage app and add Pulse from the app directory.
+
+```sh
+rage new my_app
+cd my_app
+bundle add rage-pulse
+```
+
 ## Quick start
 
 ### Add the client to the page
