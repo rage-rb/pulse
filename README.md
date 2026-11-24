@@ -191,7 +191,7 @@ The controller doesn't know anything about Pulse. It reads `params`, does its jo
 
 ## Nested components and keys
 
-Pulse can preserve unchanged nested component instances when their parent re-renders. In a collection, pass a stable `key` to `render` so Pulse can associate each new declaration with the existing component:
+Pulse can preserve unchanged nested component instances when their parent re-renders. When rendering multiple components of the same class, pass a stable `key` to `render` so Pulse can associate each new declaration with the existing component:
 
 ```ruby
 class Articles::MostViewed < Pulse::Component
