@@ -3,20 +3,17 @@
 require_relative "lib/pulse/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "pulse"
+  spec.name = "rage-pulse"
   spec.version = Pulse::VERSION
   spec.authors = ["Roman Samoilov"]
-  spec.email = ["2270393+rsamoilov@users.noreply.github.com"]
+  spec.email = ["developers@rage-rb.dev"]
 
-  spec.summary = "Write a short summary, because RubyGems requires one."
-  spec.description = "Write a longer description or delete this line."
-  # spec.homepage = "Put your gem's website or public repo URL here."
+  spec.summary = "Stateful, reactive views for Ruby, built with Phlex and Rage"
+  spec.homepage = "https://github.com/rage-rb/pulse"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.2.0"
+  spec.required_ruby_version = ">= 3.4.0"
 
-  spec.metadata["allowed_push_host"] = "Set to your gem server 'https://example.com'"
-  # spec.metadata["source_code_uri"] = "Put your gem's public repo URL here."
-  # spec.metadata["changelog_uri"] = "Put your gem's CHANGELOG.md URL here."
+  spec.metadata["source_code_uri"] = "https://github.com/rage-rb/pulse"
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
