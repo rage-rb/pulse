@@ -1,0 +1,32 @@
+name: JavaScript CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'js/**'
+  pull_request:
+    paths:
+      - 'js/**'
+
+permissions:
+  contents: read
+
+jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: js
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '^22.22.2'
+          cache: npm
+          cache-dependency-path: js/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
