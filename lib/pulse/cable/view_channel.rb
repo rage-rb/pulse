@@ -47,7 +47,7 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
     env = build_request(data)
     _, response_headers, response_body = app.call(env)
 
-    if location_url = response_headers["location"]
+    if (location_url = response_headers["location"])
       transmit(action: "navigate", url: location_url)
     else
       transmit(action: "update", html: response_body[0])
@@ -57,15 +57,15 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
   def update_page(data)
     state = Pulse.__state
 
-    if local_storage_snapshot = data["local_storage"]
+    if (local_storage_snapshot = data["local_storage"])
       state.local_storage_snapshot = local_storage_snapshot
     end
 
-    if query_snapshot = data["query"]
+    if (query_snapshot = data["query"])
       state.query_snapshot = query_snapshot
     end
 
-    if url = data["url"]
+    if (url = data["url"])
       state.url = url
     end
   end
@@ -76,20 +76,20 @@ class Pulse::Cable::ViewChannel < Rage::Cable::Channel
 
   # Build the Rack env hash representing the request
   def build_request(data)
-    _env = env.dup
-    _env["rack.upgrade?"] = _env["rack.upgrade"] = _env["rage.request_id"] = nil
+    request_env = env.dup
+    request_env["rack.upgrade?"] = request_env["rack.upgrade"] = request_env["rage.request_id"] = nil
 
-    _env["PATH_INFO"] = data["url"]
-    _env["REQUEST_METHOD"] = data["method"] || "GET"
-    _env["QUERY_STRING"] = data["query"] || ""
+    request_env["PATH_INFO"] = data["url"]
+    request_env["REQUEST_METHOD"] = data["method"] || "GET"
+    request_env["QUERY_STRING"] = data["query"] || ""
 
     if (body = data["body"])
-      _env["rack.input"] = StringIO.new(body)
-      _env["IODINE_HAS_BODY"] = true
-      _env["CONTENT_TYPE"] = data["contentType"]
-      _env["CONTENT_LENGTH"] = body.bytesize.to_s
+      request_env["rack.input"] = StringIO.new(body)
+      request_env["IODINE_HAS_BODY"] = true
+      request_env["CONTENT_TYPE"] = data["contentType"]
+      request_env["CONTENT_LENGTH"] = body.bytesize.to_s
     end
 
-    _env
+    request_env
   end
 end

@@ -15,28 +15,28 @@ class Pulse::ServerEvents
   end
 
   def replace_component(component)
-    emit(:replace, component) { { action: "replace", html: component.__pulse_dump(true) } }
+    emit(:replace, component) { {action: "replace", html: component.__pulse_dump(true)} }
   end
 
   def replace_html(html)
     @html_seq ||= (1..).each
-    emit(:replace, @html_seq.next) { { action: "replace", html: } }
+    emit(:replace, @html_seq.next) { {action: "replace", html:} }
   end
 
   def append_component(component, selector)
-    emit(:append, component) { { action: "append", selector:, html: component.__pulse_dump } }
+    emit(:append, component) { {action: "append", selector:, html: component.__pulse_dump} }
   end
 
   def prepend_component(component, selector)
-    emit(:prepend, component) { { action: "prepend", selector:, html: component.__pulse_dump } }
+    emit(:prepend, component) { {action: "prepend", selector:, html: component.__pulse_dump} }
   end
 
   def remove_component(component_id)
-    emit(:remove, component_id) { { action: "remove", id: component_id } }
+    emit(:remove, component_id) { {action: "remove", id: component_id} }
   end
 
   def update_page(page)
-    emit(:page) { { action: "page", **page.__pulse_dump } }
+    emit(:page) { {action: "page", **page.__pulse_dump} }
   end
 
   private

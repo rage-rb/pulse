@@ -280,7 +280,6 @@ RSpec.describe Pulse::ComponentRootValidator do
     expect {
       described_class.validate!(Siblings, Empty)
     }.to raise_error(Pulse::InvalidComponentRootError, /Found 2 problems/)
-
   ensure
     Object.send(:remove_const, :Empty)
     Object.send(:remove_const, :Siblings)

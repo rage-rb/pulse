@@ -33,7 +33,7 @@ class Pulse::ComponentRootValidator < Prism::Visitor
           "the root #{describe(roots)} in #{scope_name}; move #{unwrapped_output.one? ? "it" : "them"} " \
           "inside the `#{root.name}`."
       elsif roots.any?
-        both = roots.length == 2 ? "both" : "all"
+        both = (roots.length == 2) ? "both" : "all"
         outside = unwrapped_output.any? ? ", and #{describe(unwrapped_output)} #{verb(unwrapped_output)} also rendered outside them" : ""
 
         "#{describe(roots)} are #{both} top-level in #{scope_name}#{outside}; wrap them in one element."
@@ -57,7 +57,7 @@ class Pulse::ComponentRootValidator < Prism::Visitor
     end
 
     def scope_name
-      scope == "view_template" ? "`view_template`" : "this render block"
+      (scope == "view_template") ? "`view_template`" : "this render block"
     end
 
     def describe(nodes)
@@ -81,7 +81,7 @@ class Pulse::ComponentRootValidator < Prism::Visitor
 
     def initialize
       @returns = []
-      super()
+      super
     end
 
     def visit_def_node(_node)
@@ -102,7 +102,7 @@ class Pulse::ComponentRootValidator < Prism::Visitor
 
     def initialize
       @output = []
-      super()
+      super
     end
 
     def visit_call_node(node)

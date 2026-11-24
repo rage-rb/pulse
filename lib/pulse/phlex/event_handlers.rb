@@ -29,7 +29,7 @@ module Pulse::Phlex::EventHandlers
 
     raise ArgumentError, "`#{event}` can't use `key`" if key && event != :keyup && event != :keydown
 
-    options = { "data-pulse-#{event}" => handler.to_s, "data-pulse-component-id" => __component_id }
+    options = {"data-pulse-#{event}" => handler.to_s, "data-pulse-component-id" => __component_id}
     options["data-pulse-#{event}-debounce"] = debounce if debounce
     options["data-pulse-#{event}-throttle"] = throttle if throttle
     options["data-pulse-#{event}-key"] = key if key

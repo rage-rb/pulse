@@ -5,9 +5,7 @@ require "rspec/core/rake_task"
 
 RSpec::Core::RakeTask.new(:spec)
 
-require "rubocop/rake_task"
-
-RuboCop::RakeTask.new
+require "standard/rake"
 
 JAVASCRIPT_BUNDLE = "lib/pulse/assets/pulse.min.js"
 JAVASCRIPT_INPUTS = Rake::FileList[
@@ -31,4 +29,4 @@ task build: JAVASCRIPT_BUNDLE
 # make `rake clean` remove the bundle
 CLEAN.include(JAVASCRIPT_BUNDLE)
 
-task default: %i[spec rubocop]
+task default: %i[spec standard]
