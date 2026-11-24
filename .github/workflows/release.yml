@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - lib/pulse/version.rb
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+      - uses: rubygems/release-gem@v1
