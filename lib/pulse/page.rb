@@ -11,7 +11,7 @@ class Pulse::Page
 
   def navigate(url)
     @navigate_url = url
-    state.server_events.update_page(self)
+    @state.server_events.update_page(self)
   end
 
   def query
