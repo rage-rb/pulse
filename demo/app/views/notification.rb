@@ -17,17 +17,19 @@ class Notification < Pulse::Component
   end
 
   def view_template
-    # `context` is Phlex's per-render shared hash — every component in a single
-    # render tree sees the same object — so the <style> block is emitted once no
-    # matter how many notifications render on the page.
-    unless context[:notification_css_rendered]
-      context[:notification_css_rendered] = true
-      style { raw(safe(css)) }
-    end
+    div do
+      # `context` is Phlex's per-render shared hash — every component in a single
+      # render tree sees the same object — so the <style> block is emitted once no
+      # matter how many notifications render on the page.
+      unless context[:notification_css_rendered]
+        context[:notification_css_rendered] = true
+        style { raw(safe(css)) }
+      end
 
-    div(class: "notification", role: "status", aria_live: "polite") do
-      div(class: "notification-title") { @title }
-      div(class: "notification-body") { @message }
+      div(class: "notification", role: "status", aria_live: "polite") do
+        div(class: "notification-title") { @title }
+        div(class: "notification-body") { @message }
+      end
     end
   end
 
